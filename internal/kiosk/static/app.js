@@ -120,6 +120,23 @@
     actions.textContent = "";
     const busy = Boolean(view.session_id && view.session_state === "running");
 
+    if (view.can_install) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.classList.add("primary");
+      btn.textContent = "Install";
+      btn.disabled = busy;
+      btn.addEventListener("click", () => {
+        /* Install output is plain terminal noise; open the panel so
+           progress is visible. */
+        card.termOpen = true;
+        api(`/api/harness/${encodeURIComponent(view.name)}/install`)
+          .then(refreshStatus)
+          .catch(showError);
+      });
+      actions.appendChild(btn);
+    }
+
     if (view.can_login) {
       (view.methods || []).forEach((m, i) => {
         const btn = document.createElement("button");
@@ -186,8 +203,11 @@
     }
 
     const notes = [];
+    if (!view.installed && !view.can_install)
+      notes.push("CLI not installed (mise not found)");
     if (!view.can_logout && view.logout_reason) notes.push("log out unavailable: " + view.logout_reason);
-    if (!view.can_login && view.login_reason) notes.push("log in unavailable: " + view.login_reason);
+    if (!view.can_login && view.login_reason && view.login_reason !== "CLI not installed")
+      notes.push("log in unavailable: " + view.login_reason);
     for (const text of notes) {
       const p = document.createElement("p");
       p.className = "note";
@@ -211,6 +231,7 @@
       return;
     }
     panel.hidden = false;
+    q(".term").hidden = !card.termOpen;
     q(".session-state").textContent = view.session_state || "running";
     const form = q(".input-row");
     const inputKind = activeInputKind(view);

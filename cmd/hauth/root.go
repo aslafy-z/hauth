@@ -54,7 +54,7 @@ func newRootCmd() *cobra.Command {
 	pf.StringVar(&f.secretPrefix, "secret-prefix", envOr("HAUTH_SECRET_PREFIX", k8sstore.DefaultPrefix), "k8s store Secret name prefix")
 	pf.StringVar(&f.stateDir, "state-dir", os.Getenv("HAUTH_STATE_DIR"), "restored-state directory (default ~/.local/state/hauth)")
 
-	cmd.AddCommand(newAgentCmd(f), newLoginCmd(f), newStatusCmd(f), newStoreCmd(f), newVersionCmd())
+	cmd.AddCommand(newAgentCmd(f), newLoginCmd(f), newStatusCmd(f), newStoreCmd(f), newInstallCmd(f), newVersionCmd())
 	return cmd
 }
 

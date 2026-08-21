@@ -10,6 +10,16 @@ Use the snippet in [deploy/coder](../deploy/coder) (walkthrough in [coder.md](co
 
 Health check: `curl -fsS http://127.0.0.1:43117/healthz`.
 
+## Installing harness CLIs
+
+hauth can install missing harness CLIs through `mise` (`mise` must be on PATH):
+
+- `hauth install` installs every known-but-missing CLI; `hauth install claude codex` targets specific ones; `--force` reinstalls.
+- `hauth agent --install all` (or `HAUTH_INSTALL=all`) does the same in the background at agent start without delaying the kiosk.
+- The kiosk shows an Install button on harnesses whose CLI is missing; progress streams into the card's terminal panel.
+
+Installs run `mise use -g <tool>@latest`, so tools are pinned in the user's global mise config and survive workspace restarts.
+
 ## Log locations
 
 - `hauth agent` logs to stderr; the HAPI image startup script captures them at `~/.hapi/hauth.log`.

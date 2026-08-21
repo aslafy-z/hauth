@@ -168,6 +168,15 @@ func (s *Server) routes() http.Handler {
 		writeJSON(w, http.StatusOK, map[string]string{"session_id": id})
 	})
 
+	mux.HandleFunc("POST /api/harness/{name}/install", func(w http.ResponseWriter, r *http.Request) {
+		id, err := s.ctrl.Install(r.Context(), r.PathValue("name"))
+		if err != nil {
+			writeErr(w, http.StatusConflict, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]string{"session_id": id})
+	})
+
 	mux.HandleFunc("POST /api/harness/{name}/adopt", func(w http.ResponseWriter, r *http.Request) {
 		if err := s.ctrl.Adopt(r.Context(), r.PathValue("name")); err != nil {
 			writeErr(w, http.StatusConflict, err)

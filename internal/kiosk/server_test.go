@@ -16,12 +16,13 @@ import (
 )
 
 type stubController struct {
-	mu       sync.Mutex
-	views    []HarnessView
-	inputs   []string
-	session  *stubSession
-	events   chan Event
-	canceled []string
+	mu        sync.Mutex
+	views     []HarnessView
+	inputs    []string
+	session   *stubSession
+	events    chan Event
+	canceled  []string
+	installed string
 }
 
 func newStubController() *stubController {
@@ -66,6 +67,10 @@ func (c *stubController) Relogin(_ context.Context, h string) (string, error) {
 	return "sess-" + h, nil
 }
 func (c *stubController) Adopt(context.Context, string) error { return nil }
+func (c *stubController) Install(_ context.Context, harness string) (string, error) {
+	c.installed = harness
+	return "install-1", nil
+}
 func (c *stubController) Attach(id string) (AttachedSession, bool) {
 	if c.session == nil || id != "sess-1" {
 		return nil, false
@@ -276,5 +281,24 @@ func TestWebSocketUnknownSession(t *testing.T) {
 	s.Handler().ServeHTTP(rec, req)
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("got %d", rec.Code)
+	}
+}
+
+func TestInstallRoute(t *testing.T) {
+	ctrl := newStubController()
+	s := newTestServer(t, ctrl)
+	req := httptest.NewRequest("POST", "/api/harness/claude/install", nil)
+	req.Host = "127.0.0.1:43117"
+	rec := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rec, req)
+	if rec.Code != 200 {
+		t.Fatalf("install returned %d: %s", rec.Code, rec.Body.String())
+	}
+	var resp map[string]string
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatal(err)
+	}
+	if resp["session_id"] != "install-1" || ctrl.installed != "claude" {
+		t.Fatalf("unexpected install result: %+v (installed=%q)", resp, ctrl.installed)
 	}
 }

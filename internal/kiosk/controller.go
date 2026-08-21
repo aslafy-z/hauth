@@ -24,6 +24,9 @@ type Controller interface {
 	Relogin(ctx context.Context, harness string) (sessionID string, err error)
 	// Adopt imports externally created credential files into the store.
 	Adopt(ctx context.Context, harness string) error
+	// Install installs the harness's CLI in a session so the UI can
+	// stream progress like a login flow.
+	Install(ctx context.Context, harness string) (sessionID string, err error)
 	Attach(sessionID string) (AttachedSession, bool)
 	// Subscribe returns a channel of status and session events plus a
 	// cancel function. The channel is closed after cancel.
@@ -44,6 +47,11 @@ type HarnessView struct {
 
 	SessionID    string `json:"session_id,omitempty"`
 	SessionState string `json:"session_state,omitempty"`
+
+	// Installed reports whether the harness's CLI is on PATH; CanInstall
+	// is set when hauth knows how to install it.
+	Installed  bool `json:"installed"`
+	CanInstall bool `json:"can_install"`
 
 	CanLogout    bool   `json:"can_logout"`
 	LogoutReason string `json:"logout_reason,omitempty"`

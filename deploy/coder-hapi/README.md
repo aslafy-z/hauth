@@ -24,7 +24,7 @@ Set the `workspace_apps_domain` template variable to your Coder wildcard access 
 
 Workspace creation creates a persistent volume claim for `/home/coder` and a Kubernetes Deployment for the running workspace pod. The persistent volume keeps the user's home directory, tool caches, HAPI state, and locally restored credentials across workspace restarts. The Deployment is ephemeral and is recreated when the workspace starts.
 
-At startup, `/opt/hauth/start-hapi.sh` (baked into the image) installs the selected harness CLIs through the user's global `mise` config, starts `hauth agent` on `127.0.0.1:43117`, starts the HAPI hub on `127.0.0.1:3006`, and starts a HAPI runner rooted at `/home/coder/project`. The hauth agent restores stored credentials before the harnesses are first used, watches for changes, and pushes them back to the credential store.
+At startup, `/opt/hauth/start-hapi.sh` (baked into the image) installs the selected harness CLIs through the user's global `mise` config, starts `hauth agent` on `127.0.0.1:43117`, starts the HAPI hub on `127.0.0.1:3006`, and starts a HAPI runner rooted at `/home/coder/project`. The hauth agent restores stored credentials before the harnesses are first used, watches for changes, and pushes them back to the credential store. A harness CLI that is still missing (for example after switching the harness selection) can also be installed on demand from the kiosk's Install button or with `hauth install`.
 
 ## The Agent Auth app
 

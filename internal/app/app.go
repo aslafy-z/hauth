@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/aslafy-z/hauth/internal/adapter"
+	"github.com/aslafy-z/hauth/internal/installer"
 	"github.com/aslafy-z/hauth/internal/kiosk"
 	"github.com/aslafy-z/hauth/internal/session"
 	"github.com/aslafy-z/hauth/internal/source"
@@ -150,6 +151,15 @@ func (a *App) view(ctx context.Context, ad adapter.Adapter, st adapter.Status) k
 	// network call (or worse); surface an explicit button instead.
 	v.CheckIsExpensive = st.Valid == adapter.ValidityUnknown
 
+	if installer.Known(name) {
+		v.Installed = installer.Installed(name)
+		v.CanInstall = !v.Installed && installer.Available()
+	} else {
+		// Unmapped harnesses (e.g. the fake adapter) must not be blocked
+		// on installation state.
+		v.Installed = true
+	}
+
 	switch st.Source {
 	case adapter.SourceEnv:
 		v.CanLogout = false
@@ -166,6 +176,10 @@ func (a *App) view(ctx context.Context, ad adapter.Adapter, st adapter.Status) k
 	}
 	if st.Source == adapter.SourceFileExternal && a.cfg.Syncer != nil {
 		v.CanAdopt = true
+	}
+	if !v.Installed {
+		v.CanLogin = false
+		v.LoginReason = "CLI not installed"
 	}
 
 	if a.cfg.Syncer != nil {
@@ -364,6 +378,60 @@ func (a *App) Relogin(ctx context.Context, harness string) (string, error) {
 		return "", err
 	}
 	return a.StartLogin(ctx, harness, "")
+}
+
+// Install implements kiosk.Controller: run the harness CLI installation in
+// a session so the UI streams progress like a login flow. It reuses the
+// one-session-per-harness slot.
+func (a *App) Install(ctx context.Context, harness string) (string, error) {
+	if _, ok := adapter.Get(harness); !ok {
+		return "", fmt.Errorf("unknown harness %q", harness)
+	}
+	argv, err := installer.Argv(harness)
+	if err != nil {
+		return "", err
+	}
+	m := adapter.Method{
+		ID:      "install",
+		Title:   "Install",
+		Argv:    argv,
+		Input:   adapter.InputNone,
+		Timeout: 10 * time.Minute,
+	}
+
+	a.mu.Lock()
+	if oldID, ok := a.byHarness[harness]; ok {
+		if old := a.sessions[oldID]; old != nil {
+			old.Cancel()
+		}
+		delete(a.sessions, oldID)
+		delete(a.byHarness, harness)
+	}
+	a.mu.Unlock()
+
+	id := newSessionID()
+	s, err := session.Start(context.WithoutCancel(ctx), harness, m, session.Options{
+		Home:     a.cfg.Home,
+		StateDir: a.cfg.StateDir,
+	})
+	if err != nil {
+		return "", err
+	}
+	a.mu.Lock()
+	a.sessions[id] = s
+	a.byHarness[harness] = id
+	a.mu.Unlock()
+	a.publish(kiosk.Event{Type: "session_state", Harness: harness, SessionID: id, State: string(session.StateRunning)})
+
+	go func() {
+		<-s.Done()
+		state, code := s.State()
+		a.cfg.Logf("install session %s (%s) finished: %s (exit %d)", id, harness, state, code)
+		a.invalidate(harness)
+		a.publish(kiosk.Event{Type: "session_state", Harness: harness, SessionID: id, State: string(state)})
+		a.publish(kiosk.Event{Type: "status_changed", Harness: harness})
+	}()
+	return id, nil
 }
 
 // Adopt implements kiosk.Controller: explicit adoption of file-external

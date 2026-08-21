@@ -112,6 +112,8 @@ hauth login gh
 hauth status
 ```
 
+Harness CLIs that are not present yet can be installed through [mise](https://mise.jdx.dev): `hauth install` installs every missing CLI (or name specific ones), `hauth agent --install all` does the same in the background at agent start, and the kiosk shows an Install button on any harness whose CLI is missing.
+
 ## Harness support
 
 | Harness | Default method | Env short-circuit | Sync policy |
