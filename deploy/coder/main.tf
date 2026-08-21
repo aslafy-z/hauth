@@ -3,6 +3,8 @@
 # Paste these resources into an existing Coder template and wire `agent_id`
 # to your coder_agent resource. The hauth binary must exist in the workspace
 # image (ghcr.io/aslafy-z/hauth-hapi ships it at /usr/local/bin/hauth).
+# For a complete, importable Kubernetes template with HAPI and hauth wired
+# together, see ../coder-hapi instead.
 
 variable "agent_id" {
   description = "ID of the coder_agent resource that runs the workspace"

@@ -149,11 +149,13 @@ Select with `--store` or `HAUTH_STORE`. Identity comes from `HAUTH_USER` and `HA
 
 ## Coder integration
 
-[deploy/coder](deploy/coder) has a template snippet: a `coder_script` that starts `hauth agent` with `HAUTH_USER`/`HAUTH_INSTANCE`/`HAUTH_ALLOWED_ORIGINS` mapped from Coder workspace variables, and an owner-only `coder_app` for the kiosk. The binary never reads `CODER_*` variables itself. See [docs/coder.md](docs/coder.md).
+[deploy/coder-hapi](deploy/coder-hapi) is a complete, importable Kubernetes template: workspace pod with persistent home, the `ghcr.io/aslafy-z/hauth-hapi` image, HAPI hub and runner, hauth as the auth companion, and a credential store selector (home volume or per-user Secret).
+
+[deploy/coder](deploy/coder) has the minimal snippet for adding hauth to an existing template: a `coder_script` that starts `hauth agent` with `HAUTH_USER`/`HAUTH_INSTANCE`/`HAUTH_ALLOWED_ORIGINS` mapped from Coder workspace variables, and an owner-only `coder_app` for the kiosk. The binary never reads `CODER_*` variables itself. See [docs/coder.md](docs/coder.md).
 
 ## HAPI workspace image
 
-`ghcr.io/aslafy-z/hauth-hapi` is a ready-made Coder workspace image that bundles hauth with [mise](https://mise.jdx.dev) and a startup script that installs [HAPI](https://hapi.run) plus the selected harness CLIs, starts `hauth agent` on `127.0.0.1:43117`, and starts the HAPI hub and runner. It is a drop-in image for templates derived from [coder-template-hapi](https://github.com/aslafy-z/coder-template-hapi), replacing its Python auth companion with hauth.
+`ghcr.io/aslafy-z/hauth-hapi` is a ready-made Coder workspace image that bundles hauth with [mise](https://mise.jdx.dev) and a startup script that installs [HAPI](https://hapi.run) plus the selected harness CLIs, starts `hauth agent` on `127.0.0.1:43117`, and starts the HAPI hub and runner. It is a drop-in image for templates derived from [coder-template-hapi](https://github.com/aslafy-z/coder-template-hapi), replacing its Python auth companion with hauth, and the default image of the [deploy/coder-hapi](deploy/coder-hapi) template.
 
 ## Security model
 
