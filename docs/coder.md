@@ -14,7 +14,7 @@ hauth never reads `CODER_*` variables. The template maps Coder identity onto hau
 
 For a complete, importable Kubernetes template that provisions the workspace pod, HAPI, and hauth together, use [deploy/coder-hapi](../deploy/coder-hapi/), also shipped on every release as `hauth-coder-hapi-template.zip` for direct upload in Coder's template creation UI. The snippet below is for adding hauth to an existing template.
 
-[deploy/coder/main.tf](../deploy/coder/main.tf) contains the resources to paste into an existing template:
+[deploy/coder/main.tf](../deploy/coder/main.tf) contains the resources to paste into an existing template (also on each release as `hauth-coder-snippet.zip`; unlike the template zip it is not importable on its own):
 
 - `coder_script` runs `hauth agent` at workspace start with the mapping above.
 - `coder_app` exposes the kiosk as an "Agent Auth" app at `http://localhost:43117` with `share = "owner"`. The kiosk has no auth of its own; owner-only sharing is the access control.
