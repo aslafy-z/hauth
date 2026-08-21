@@ -17,7 +17,7 @@ brokered through a phone-friendly loopback kiosk, synced to a per-user credentia
 
 </div>
 
-- 🔐 **One login, every workspace.** Credentials land in a per-user store (Kubernetes Secret or plain files) and are restored into each workspace at start.
+- 🔐 **One login, every workspace.** Credentials land in a per-user file store and are restored into each workspace at start.
 - 📱 **Phone-friendly kiosk.** URLs and one-time codes surface in a tap-to-copy loopback UI, fronted by your platform (Coder app, SSH tunnel, Tailscale).
 - 🙅 **Do-no-harm detection.** Tokens injected by the platform or logins done by hand show as "managed externally" and are never touched, stored, or revoked.
 - 🔁 **Rotation-aware sync.** Rotating token caches get a single lease-holding writer; stable ones sync last-writer-wins. No silent clobbering.
@@ -57,8 +57,9 @@ hauth does not know Coder or any other platform. It sees env vars, files, and a 
             |                                      ^
             | platform front door (owner only)     | store backend
             v                                      v
-   user's browser / phone                 k8s Secret harness-creds-<user>    (v1)
-                                          file backend                        (tests, single host)
+   user's browser / phone                 per-user file store
+                                          (home volume, or shared storage
+                                           to follow the user across workspaces)
 ```
 
 Core concepts:
@@ -112,7 +113,7 @@ hauth login gh
 hauth status
 ```
 
-Harness CLIs that are not present yet can be installed through [mise](https://mise.jdx.dev): `hauth install` installs every missing CLI (or name specific ones), `hauth agent --install all` does the same in the background at agent start, and the kiosk shows an Install button on any harness whose CLI is missing.
+Harness CLIs that are not present yet can be installed by hauth itself, with no package manager: `hauth install` installs every missing CLI natively (release binaries or the harness's official install script, into `~/.local/bin`), `hauth agent --install all` does the same in the background at agent start, and the kiosk shows an Install button on any harness whose CLI is missing.
 
 ## Harness support
 
@@ -142,26 +143,23 @@ Rules that follow from the source:
 - `file-external`: files were not created by hauth. Logout warns; an explicit "adopt into store" action exists, and adoption is never automatic.
 - Re-login is logout plus the default login method as one action, so a harness never ends up half logged out.
 
-## Store backends
+## Store
 
-- `file` (default): a directory, default `~/.local/share/hauth/store`. Good for tests and single-host use.
-- `k8s`: one Kubernetes Secret per user (`harness-creds-<user>`), one key per harness, compare-and-swap via `resourceVersion`. RBAC examples in [deploy/k8s](deploy/k8s).
-
-Select with `--store` or `HAUTH_STORE`. Identity comes from `HAUTH_USER` and `HAUTH_INSTANCE` (defaults: `$USER` and `$USER@hostname`).
+The store is a directory (`--store-path`, default `~/.local/share/hauth/store`) with per-user, per-harness entries: bundle, manifest, lease, and a revision under compare-and-swap. On a persistent home volume it survives workspace restarts; on storage mounted into all of a user's workspaces it follows the user across them. `--store none` disables it. Identity comes from `HAUTH_USER` and `HAUTH_INSTANCE` (defaults: `$USER` and `$USER@hostname`). Other backends (a secrets manager, Vault) can slot in behind the same store interface if the need shows up.
 
 ## Coder integration
 
-[deploy/coder-hapi](deploy/coder-hapi) is a complete, importable Kubernetes template: workspace pod with persistent home, the `ghcr.io/aslafy-z/hauth-hapi` image, HAPI hub and runner, hauth as the auth companion, and a credential store selector (home volume or per-user Secret).
+[deploy/coder-hapi](deploy/coder-hapi) is a complete, importable Kubernetes template: workspace pod with persistent home, the `ghcr.io/aslafy-z/hauth-hapi` image, HAPI hub and runner, and hauth as the auth companion, storing credentials on the home volume.
 
 [deploy/coder](deploy/coder) has the minimal snippet for adding hauth to an existing template: a `coder_script` that starts `hauth agent` with `HAUTH_USER`/`HAUTH_INSTANCE`/`HAUTH_ALLOWED_ORIGINS` mapped from Coder workspace variables, and an owner-only `coder_app` for the kiosk. The binary never reads `CODER_*` variables itself. See [docs/coder.md](docs/coder.md).
 
 ## HAPI workspace image
 
-`ghcr.io/aslafy-z/hauth-hapi` is a ready-made Coder workspace image that bundles hauth with [mise](https://mise.jdx.dev) and a startup script that installs [HAPI](https://hapi.run) plus the selected harness CLIs, starts `hauth agent` on `127.0.0.1:43117`, and starts the HAPI hub and runner. It is the default image of the [deploy/coder-hapi](deploy/coder-hapi) template.
+`ghcr.io/aslafy-z/hauth-hapi` is a ready-made Coder workspace image that bundles hauth, Node, and [HAPI](https://hapi.run), with a startup script that installs the selected harness CLIs via `hauth install`, starts `hauth agent` on `127.0.0.1:43117`, and starts the HAPI hub and runner. It is the default image of the [deploy/coder-hapi](deploy/coder-hapi) template.
 
 ## Security model
 
-The kiosk binds loopback only and has no authentication of its own; whatever fronts it (Coder app, SSH tunnel, Tailscale) is responsible for access control. `Origin` and `Host` headers are checked against `HAUTH_ALLOWED_ORIGINS`. Credential files are written `0600`, bundles live in a per-user store guarded by RBAC, and session output is redacted before it reaches logs or the UI event stream. Details and non-goals: [docs/threat-model.md](docs/threat-model.md).
+The kiosk binds loopback only and has no authentication of its own; whatever fronts it (Coder app, SSH tunnel, Tailscale) is responsible for access control. `Origin` and `Host` headers are checked against `HAUTH_ALLOWED_ORIGINS`. Credential files are written `0600`, store entries are `0600` in `0700` directories, and session output is redacted before it reaches logs or the UI event stream. Details and non-goals: [docs/threat-model.md](docs/threat-model.md).
 
 ## Contributing
 

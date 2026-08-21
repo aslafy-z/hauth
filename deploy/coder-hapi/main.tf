@@ -45,18 +45,6 @@ variable "workspace_apps_domain" {
   default     = ""
 }
 
-variable "workspace_service_account" {
-  type        = string
-  description = "ServiceAccount name for workspace pods. Required for the kubernetes credential store; see deploy/k8s/rbac.yaml for the Role it needs. Empty uses the namespace default ServiceAccount."
-  default     = ""
-}
-
-variable "secret_prefix" {
-  type        = string
-  description = "Prefix of the per-user credentials Secret name used by the kubernetes credential store."
-  default     = "harness-creds-"
-}
-
 variable "enable_github_external_auth" {
   type        = bool
   description = "Export GH_TOKEN from a Coder external auth provider into workspaces. hauth then reports gh as managed externally and leaves it alone."
@@ -217,26 +205,6 @@ data "coder_parameter" "hapi_cli_api_token" {
   order        = 6
 }
 
-data "coder_parameter" "credential_store" {
-  name         = "credential_store"
-  display_name = "Credential store"
-  description  = "Where hauth keeps harness credentials. \"file\" stores under the home volume: zero setup, but per-workspace only. \"kubernetes\" stores in a per-user Secret shared by all of the user's workspaces: requires the workspace ServiceAccount RBAC from deploy/k8s/rbac.yaml."
-  default      = "file"
-  mutable      = false
-  order        = 7
-  form_type    = "radio"
-
-  option {
-    name  = "Home volume (per workspace)"
-    value = "file"
-  }
-
-  option {
-    name  = "Kubernetes Secret (per user)"
-    value = "kubernetes"
-  }
-}
-
 resource "coder_agent" "main" {
   os   = "linux"
   arch = data.coder_provisioner.me.arch
@@ -319,11 +287,9 @@ locals {
 
   allowed_origins = join(",", compact([local.auth_app_host, local.access_host]))
 
-  store_env = data.coder_parameter.credential_store.value == "kubernetes" ? {
-    HAUTH_STORE         = "k8s"
-    HAUTH_NAMESPACE     = var.namespace
-    HAUTH_SECRET_PREFIX = var.secret_prefix
-    } : {
+  # The store lives on the persistent home volume; point HAUTH_STORE_PATH
+  # at a shared volume to sync credentials across workspaces.
+  store_env = {
     HAUTH_STORE      = "file"
     HAUTH_STORE_PATH = "/home/coder/.local/share/hauth/store"
   }
@@ -410,8 +376,6 @@ resource "kubernetes_deployment_v1" "workspace" {
       }
 
       spec {
-        service_account_name = var.workspace_service_account != "" ? var.workspace_service_account : null
-
         security_context {
           run_as_user     = 1000
           fs_group        = 1000

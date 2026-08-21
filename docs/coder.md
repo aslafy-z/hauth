@@ -6,7 +6,7 @@ hauth never reads `CODER_*` variables. The template maps Coder identity onto hau
 
 | hauth | from Coder | purpose |
 |---|---|---|
-| `HAUTH_USER` | `data.coder_workspace_owner.me.name` | store identity: which per-user Secret to use |
+| `HAUTH_USER` | `data.coder_workspace_owner.me.name` | store identity: which per-user store entry to use |
 | `HAUTH_INSTANCE` | `data.coder_workspace.me.name` | lease identity: which workspace holds a refresh lease |
 | `HAUTH_ALLOWED_ORIGINS` | the Coder access URL host | kiosk Origin/Host validation for the proxied app |
 
@@ -24,15 +24,14 @@ Wire `agent_id` to your `coder_agent` resource and make sure the hauth binary is
 
 ## Store wiring
 
-For the k8s backend the pod must run with a ServiceAccount allowed to read and update the user's Secret. Set on the agent environment:
+The store is a directory. Keep the default (`~/.local/share/hauth/store`) on a persistent home volume so credentials survive workspace restarts:
 
 ```
-HAUTH_STORE=k8s
-HAUTH_NAMESPACE=<workspace namespace>
-HAUTH_SECRET_PREFIX=harness-creds-
+HAUTH_STORE=file
+HAUTH_STORE_PATH=/home/coder/.local/share/hauth/store
 ```
 
-RBAC examples and the create-by-name caveat are in [deploy/k8s/rbac.yaml](../deploy/k8s/rbac.yaml). If your template does not attach a ServiceAccount to workspace pods today, that is the one template change the k8s backend requires. The file backend works without any of this for single-workspace use, but does not survive home-volume loss and does not share across workspaces unless the store path is on shared storage.
+To share credentials across all of a user's workspaces, mount per-user shared storage into each workspace and point `HAUTH_STORE_PATH` at it. The lease and compare-and-swap semantics are designed for exactly that concurrent access.
 
 ## Non-Coder front doors
 

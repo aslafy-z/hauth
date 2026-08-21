@@ -41,7 +41,7 @@ type Entry struct {
 	Lease     Lease     `json:"lease"`
 }
 
-// Store is implemented by each backend (file, kubernetes).
+// Store is implemented by each backend.
 //
 // Revisions are opaque strings. Put with expectRev "" requires that no entry
 // exists yet; otherwise expectRev must equal the current revision or

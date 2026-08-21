@@ -19,13 +19,9 @@ Consequences:
 - Any process inside the workspace running as any user that can reach loopback can drive the kiosk. In practice workspace pods are single-user; a co-resident malicious process already has the user's files, including the credential caches themselves, so the kiosk adds no privilege.
 - `Origin` and `Host` headers are validated against `HAUTH_ALLOWED_ORIGINS` to stop cross-origin requests from a browser tab reaching the forwarded port. Loopback origins are always allowed so tunnels work.
 
-### What the ServiceAccount can read
-
-The k8s store backend uses a per-workspace ServiceAccount bound to a Role scoped to the user's own Secret (`harness-creds-<user>`). Because Kubernetes cannot restrict `create` by resource name, the recommended setup pre-creates each user's Secret and grants only `get`/`update`/`delete` with `resourceNames`. A compromised workspace can then read and overwrite its own user's credentials, which it could do anyway via the files on disk, and nothing of any other user.
-
 ### Store contents
 
-Bundles are plaintext inside the Secret (base64 like any Secret data). Protection is RBAC plus whatever encryption-at-rest the cluster configures for Secrets. hauth does not add its own encryption layer in v1; a Vault backend is the planned path for stronger guarantees.
+Bundles are plaintext files, `0600` inside `0700` directories, owned by the workspace user. Protection is filesystem permissions plus whatever encryption-at-rest the volume provides. When the store path is on storage shared between a user's workspaces, mounting that storage is the access boundary: mount it per user, never per team. hauth does not add its own encryption layer in v1; an encrypting backend is the planned path for stronger guarantees.
 
 ## Logs and redaction
 

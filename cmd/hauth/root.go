@@ -16,18 +16,15 @@ import (
 	"github.com/aslafy-z/hauth/internal/source"
 	"github.com/aslafy-z/hauth/internal/store"
 	filestore "github.com/aslafy-z/hauth/internal/store/file"
-	k8sstore "github.com/aslafy-z/hauth/internal/store/k8s"
 	"github.com/aslafy-z/hauth/internal/syncer"
 )
 
 type rootFlags struct {
-	user         string
-	instance     string
-	storeKind    string
-	storePath    string
-	namespace    string
-	secretPrefix string
-	stateDir     string
+	user      string
+	instance  string
+	storeKind string
+	storePath string
+	stateDir  string
 }
 
 func envOr(key, fallback string) string {
@@ -48,10 +45,8 @@ func newRootCmd() *cobra.Command {
 	pf := cmd.PersistentFlags()
 	pf.StringVar(&f.user, "user", envOr("HAUTH_USER", os.Getenv("USER")), "store identity of the human user")
 	pf.StringVar(&f.instance, "instance", os.Getenv("HAUTH_INSTANCE"), "identity of this workspace (default user@hostname)")
-	pf.StringVar(&f.storeKind, "store", envOr("HAUTH_STORE", "file"), "store backend: file, k8s, or none")
+	pf.StringVar(&f.storeKind, "store", envOr("HAUTH_STORE", "file"), "store backend: file or none")
 	pf.StringVar(&f.storePath, "store-path", os.Getenv("HAUTH_STORE_PATH"), "file store root (default ~/.local/share/hauth/store)")
-	pf.StringVar(&f.namespace, "namespace", os.Getenv("HAUTH_NAMESPACE"), "k8s store namespace (default: pod namespace)")
-	pf.StringVar(&f.secretPrefix, "secret-prefix", envOr("HAUTH_SECRET_PREFIX", k8sstore.DefaultPrefix), "k8s store Secret name prefix")
 	pf.StringVar(&f.stateDir, "state-dir", os.Getenv("HAUTH_STATE_DIR"), "restored-state directory (default ~/.local/state/hauth)")
 
 	cmd.AddCommand(newAgentCmd(f), newLoginCmd(f), newStatusCmd(f), newStoreCmd(f), newInstallCmd(f), newVersionCmd())
@@ -98,19 +93,6 @@ func setup(f *rootFlags, logf func(string, ...any)) (*env, error) {
 			root = filepath.Join(home, ".local", "share", "hauth", "store")
 		}
 		e.store = filestore.New(root)
-	case "k8s", "kubernetes":
-		ns := f.namespace
-		if ns == "" {
-			ns = podNamespace()
-		}
-		if ns == "" {
-			return nil, fmt.Errorf("k8s store needs a namespace: set --namespace or HAUTH_NAMESPACE")
-		}
-		st, err := k8sstore.NewInCluster(ns, f.secretPrefix)
-		if err != nil {
-			return nil, fmt.Errorf("k8s store: %w", err)
-		}
-		e.store = st
 	default:
 		return nil, fmt.Errorf("unknown store backend %q", f.storeKind)
 	}
@@ -144,14 +126,6 @@ func registerAdapters(cfg common.Config) {
 			adapter.Register(fake.New(cfg, cli))
 		}
 	}
-}
-
-func podNamespace() string {
-	data, err := os.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace")
-	if err != nil {
-		return ""
-	}
-	return strings.TrimSpace(string(data))
 }
 
 func splitOrigins(v string) []string {

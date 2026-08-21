@@ -6,19 +6,29 @@ Use the snippet in [deploy/coder](../deploy/coder) (walkthrough in [coder.md](co
 
 - `hauth agent` starts from the workspace startup script, restores credentials, and serves the kiosk on `127.0.0.1:43117`.
 - An owner-only `coder_app` fronts the kiosk.
-- For the k8s store, the workspace pod needs a ServiceAccount with access to the user's Secret; see [deploy/k8s](../deploy/k8s).
+- The store is a directory (`HAUTH_STORE_PATH`); keep it on the persistent home volume, or on shared storage to sync credentials across workspaces.
 
 Health check: `curl -fsS http://127.0.0.1:43117/healthz`.
 
 ## Installing harness CLIs
 
-hauth can install missing harness CLIs through `mise` (`mise` must be on PATH):
+hauth installs missing harness CLIs natively, with no package manager:
 
 - `hauth install` installs every known-but-missing CLI; `hauth install claude codex` targets specific ones; `--force` reinstalls.
 - `hauth agent --install all` (or `HAUTH_INSTALL=all`) does the same in the background at agent start without delaying the kiosk.
 - The kiosk shows an Install button on harnesses whose CLI is missing; progress streams into the card's terminal panel.
 
-Installs run `mise use -g <tool>@latest`, so tools are pinned in the user's global mise config and survive workspace restarts.
+Release binaries land in `~/.local/bin` (add it to PATH); official install scripts put their binaries in the same place. Sources per harness, as verified against each project's documentation or release listing:
+
+| Harness | Method | Source |
+|---|---|---|
+| gh | latest GitHub release binary | `github.com/cli/cli` (`gh_<v>_linux_<arch>.tar.gz`, `gh_<v>_macOS_<arch>.zip`) |
+| claude | official install script | `https://claude.ai/install.sh` (installs to `~/.local/bin/claude`); npm `@anthropic-ai/claude-code` as fallback when bash is missing |
+| codex | latest GitHub release binary | `github.com/openai/codex` (`codex-<triple>.tar.gz`, musl builds on Linux) |
+| opencode | latest GitHub release binary | `github.com/anomalyco/opencode` (`opencode-<os>-<arch>.tar.gz`/`.zip`); official script `https://opencode.ai/install` as fallback (installs to `~/.opencode/bin`) |
+| agy | official install script | `https://antigravity.google/cli/install.sh` (installs to `~/.local/bin/agy`) |
+
+Install scripts are fetched by hauth itself and run with `bash`; `curl` is not required. `GITHUB_TOKEN`, when set, is used for GitHub API rate limits.
 
 ## Log locations
 
@@ -46,18 +56,18 @@ Leases have a short TTL (10 minutes) renewed by the holder's watcher loop; a sto
 2. If the holder is gone and the lease is expired, the next workspace that needs it acquires it automatically; the kiosk also offers an explicit take-over.
 3. A take-over acquires the lease and probes; if the probe fails, it starts a fresh login flow.
 
-## Inspecting the k8s store
+## Inspecting the store
+
+The file store lives under `~/.local/share/hauth/store` by default (`--store-path` / `HAUTH_STORE_PATH`), one directory per user and harness:
 
 ```sh
-kubectl get secret harness-creds-<user> -o json \
-  | jq -r '.data | keys[]'
-# <harness>.tar.gz, <harness>.manifest.json, <harness>.lease.json per harness
+ls ~/.local/share/hauth/store/<user>/<harness>/
+# bundle.tar.gz  manifest.json  lease.json  rev
 
-kubectl get secret harness-creds-<user> -o jsonpath='{.data.gh\.manifest\.json}' \
-  | base64 -d | jq .
+jq . ~/.local/share/hauth/store/<user>/<harness>/manifest.json
 ```
 
-The manifest lists file paths, hashes, and which files are identity files. The tarball is the credential material itself: treat access to it as access to the credentials.
+The manifest lists file paths, hashes, and which files are identity files. The tarball is the credential material itself: treat access to it as access to the credentials. To share credentials across workspaces, point the store path at storage mounted in all of the user's workspaces.
 
 ## Metrics
 

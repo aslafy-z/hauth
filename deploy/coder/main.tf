@@ -17,16 +17,10 @@ variable "hauth_listen" {
   default     = "127.0.0.1:43117"
 }
 
-variable "hauth_store" {
-  description = "Store backend: file or k8s"
+variable "hauth_store_path" {
+  description = "Store directory. Keep it on the persistent home volume, or on per-user shared storage to sync credentials across workspaces."
   type        = string
-  default     = "file"
-}
-
-variable "hauth_namespace" {
-  description = "Namespace of the per-user credentials Secret (k8s store)"
-  type        = string
-  default     = ""
+  default     = "/home/coder/.local/share/hauth/store"
 }
 
 data "coder_workspace" "me" {}
@@ -46,8 +40,8 @@ resource "coder_script" "hauth_agent" {
     export HAUTH_INSTANCE="${data.coder_workspace.me.name}"
     export HAUTH_ALLOWED_ORIGINS="${data.coder_workspace.me.access_url}"
     export HAUTH_LISTEN="${var.hauth_listen}"
-    export HAUTH_STORE="${var.hauth_store}"
-    export HAUTH_NAMESPACE="${var.hauth_namespace}"
+    export HAUTH_STORE="file"
+    export HAUTH_STORE_PATH="${var.hauth_store_path}"
 
     if curl -fsS "http://$${HAUTH_LISTEN}/healthz" >/dev/null 2>&1; then
       echo "hauth agent already running"

@@ -16,7 +16,7 @@ You need an existing Kubernetes cluster and namespace for workspace resources. T
 
 The Coder provisioner must be able to authenticate to the target cluster. If Coder runs inside the same cluster, use in-cluster ServiceAccount credentials (`use_kubeconfig = false`). If Coder runs outside the cluster, set `use_kubeconfig = true` and provide a valid `~/.kube/config` on the Coder host.
 
-The default workspace image is `ghcr.io/aslafy-z/hauth-hapi:latest`, built from [deploy/docker/Dockerfile.hapi](../docker/Dockerfile.hapi). Any replacement image must ship `mise`, the hauth binary at `/usr/local/bin/hauth`, and the startup script at `/opt/hauth/start-hapi.sh`.
+The default workspace image is `ghcr.io/aslafy-z/hauth-hapi:latest`, built from [deploy/docker/Dockerfile.hapi](../docker/Dockerfile.hapi). Any replacement image must ship Node with the HAPI package, the hauth binary at `/usr/local/bin/hauth`, and the startup script at `/opt/hauth/start-hapi.sh`.
 
 Set the `workspace_apps_domain` template variable to your Coder wildcard access domain without the leading `*.` (for example `apps.coder.example.com`). The hauth kiosk validates `Host` and `Origin` headers by exact hostname; this variable lets the template compute the Agent Auth app hostname and pass it through `HAUTH_ALLOWED_ORIGINS`. Without it, the kiosk is reachable through an SSH tunnel (`coder ssh` port-forward) but rejects the proxied Coder app.
 
@@ -24,7 +24,7 @@ Set the `workspace_apps_domain` template variable to your Coder wildcard access 
 
 Workspace creation creates a persistent volume claim for `/home/coder` and a Kubernetes Deployment for the running workspace pod. The persistent volume keeps the user's home directory, tool caches, HAPI state, and locally restored credentials across workspace restarts. The Deployment is ephemeral and is recreated when the workspace starts.
 
-At startup, `/opt/hauth/start-hapi.sh` (baked into the image) installs the selected harness CLIs through the user's global `mise` config, starts `hauth agent` on `127.0.0.1:43117`, starts the HAPI hub on `127.0.0.1:3006`, and starts a HAPI runner rooted at `/home/coder/project`. The hauth agent restores stored credentials before the harnesses are first used, watches for changes, and pushes them back to the credential store. A harness CLI that is still missing (for example after switching the harness selection) can also be installed on demand from the kiosk's Install button or with `hauth install`.
+At startup, `/opt/hauth/start-hapi.sh` (baked into the image) installs the selected harness CLIs natively with `hauth install`, starts `hauth agent` on `127.0.0.1:43117`, starts the HAPI hub on `127.0.0.1:3006`, and starts a HAPI runner rooted at `/home/coder/project`. The hauth agent restores stored credentials before the harnesses are first used, watches for changes, and pushes them back to the credential store. A harness CLI that is still missing (for example after switching the harness selection) can also be installed on demand from the kiosk's Install button or with `hauth install`.
 
 ## The Agent Auth app
 
@@ -34,12 +34,9 @@ hauth also persists credentials: after a login, the credential files are bundled
 
 The kiosk has no authentication of its own. The Coder app is `share = "owner"`; that owner-only sharing is the access control.
 
-## Credential store modes
+## Credential store
 
-The **Credential store** parameter selects where hauth keeps bundles:
-
-- `file` (default): under `/home/coder/.local/share/hauth/store` on the home volume. Zero setup, but per-workspace only: credentials do not follow the user to other workspaces and die with the volume.
-- `kubernetes`: in a per-user Secret (`harness-creds-<user>`) in the workspace namespace, shared by all of the user's workspaces. Requires workspace pods to run with a ServiceAccount allowed to read and write those Secrets: set the `workspace_service_account` template variable and apply RBAC from [deploy/k8s/rbac.yaml](../k8s/rbac.yaml).
+hauth keeps credential bundles under `/home/coder/.local/share/hauth/store` on the persistent home volume, so logins survive workspace restarts. To share credentials across all of a user's workspaces, mount per-user shared storage into each workspace and set `HAUTH_STORE_PATH` to it; the store's lease and compare-and-swap semantics are built for that concurrent access.
 
 ## Parameters
 
@@ -47,11 +44,10 @@ The **Credential store** parameter selects where hauth keeps bundles:
 |---|---|---|
 | Workspace image | `ghcr.io/aslafy-z/hauth-hapi:latest` | must ship hauth and the startup script |
 | CPU / Memory / Home disk size | 2 cores / 2 GB / 10 GB | pod limits and PVC size |
-| Agent harness | `all` | which harness CLIs `mise` installs at startup; `none` skips HAPI and hauth |
+| Agent harness | `all` | which harness CLIs `hauth install` sets up at startup; `none` skips HAPI and hauth |
 | HAPI CLI API token | `token` | passed to HAPI as `CLI_API_TOKEN`; change it for shared or sensitive environments |
-| Credential store | `file` | see above; immutable per workspace |
 
-Template variables: `namespace` (required), `use_kubeconfig`, `workspace_apps_domain`, `workspace_service_account`, `secret_prefix`, `enable_github_external_auth`, `github_external_auth_id`.
+Template variables: `namespace` (required), `use_kubeconfig`, `workspace_apps_domain`, `enable_github_external_auth`, `github_external_auth_id`.
 
 ## GitHub external auth
 
@@ -63,8 +59,8 @@ After the workspace starts with any harness mode except `none`, open **HAPI** fr
 
 ## Credentials
 
-No provider credentials are committed by this template. Users authenticate through each tool's normal login flow, brokered by hauth, or provide per-user environment variables and mounted secrets, which hauth detects and leaves alone. With the `kubernetes` store, bundles live in per-user Secrets guarded by RBAC; with the `file` store, they stay on the user's home volume.
+No provider credentials are committed by this template. Users authenticate through each tool's normal login flow, brokered by hauth, or provide per-user environment variables and mounted secrets, which hauth detects and leaves alone. Credential bundles stay on the user's home volume, `0600` and owned by the workspace user.
 
 ## Known limitations
 
-Live HAPI sessions do not survive pod deletion; this template runs a per-workspace HAPI hub only. Tool installation depends on the configured `mise` aliases. The `file` store does not synchronize credentials across workspaces; use the `kubernetes` store for that.
+Live HAPI sessions do not survive pod deletion; this template runs a per-workspace HAPI hub only. Harness CLI installation depends on each project's release or install-script availability. Credentials follow the user across workspaces only when the store path is on storage mounted in all of them.

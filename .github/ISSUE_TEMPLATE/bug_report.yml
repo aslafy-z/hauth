@@ -29,7 +29,7 @@ body:
       label: Store backend
       options:
         - file
-        - k8s
+        - none
         - not relevant
     validations:
       required: true

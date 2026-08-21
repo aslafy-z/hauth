@@ -16,7 +16,7 @@ Use [GitHub private vulnerability reporting](https://github.com/aslafy-z/hauth/s
 Reports that are in scope, with the threat model in [docs/threat-model.md](docs/threat-model.md) as the reference:
 
 - Kiosk Origin/Host validation bypass, or any way to drive the kiosk cross-origin.
-- Escaping the store RBAC boundary: reading or writing another user's Secret through hauth.
+- Store isolation bypass: reading or writing another user's store entries through hauth.
 - Redaction bypass: credential material reaching the ring buffer, SSE stream, or logs unmasked.
 - Bundle path traversal: a crafted bundle writing outside `$HOME` or outside the adapter's declared paths.
 
