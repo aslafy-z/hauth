@@ -10,6 +10,15 @@ tags: [kubernetes, hapi, hauth, ai, agents]
 
 This template provisions a Kubernetes pod as a Coder workspace with a persistent home volume, a per-workspace [HAPI](https://hapi.run) hub and runner, and [hauth](https://github.com/aslafy-z/hauth) as the authentication companion for the AI agent harness CLIs: browser-free login brokering plus credential persistence across workspaces.
 
+## Importing the template
+
+Two equivalent paths:
+
+- Download `hauth-coder-hapi-template.zip` from the [latest release](https://github.com/aslafy-z/hauth/releases/latest) and upload it in the Coder dashboard under Templates, Create template.
+- Or push this directory with the CLI: `coder templates push hauth-hapi -d deploy/coder-hapi`.
+
+Set the template variables (at least `namespace`) when prompted.
+
 ## Prerequisites
 
 You need an existing Kubernetes cluster and namespace for workspace resources. The namespace must exist before workspaces are created.

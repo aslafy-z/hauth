@@ -12,7 +12,7 @@ hauth never reads `CODER_*` variables. The template maps Coder identity onto hau
 
 ## Template snippet
 
-For a complete, importable Kubernetes template that provisions the workspace pod, HAPI, and hauth together, use [deploy/coder-hapi](../deploy/coder-hapi/). The snippet below is for adding hauth to an existing template.
+For a complete, importable Kubernetes template that provisions the workspace pod, HAPI, and hauth together, use [deploy/coder-hapi](../deploy/coder-hapi/), also shipped on every release as `hauth-coder-hapi-template.zip` for direct upload in Coder's template creation UI. The snippet below is for adding hauth to an existing template.
 
 [deploy/coder/main.tf](../deploy/coder/main.tf) contains the resources to paste into an existing template:
 

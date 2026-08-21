@@ -89,3 +89,7 @@ docker_manifests:
 release:
   draft: false
   prerelease: auto
+  extra_files:
+    # Built by the release workflow before goreleaser runs; uploadable
+    # as-is in Coder's template creation UI.
+    - glob: dist-extra/hauth-coder-hapi-template.zip
