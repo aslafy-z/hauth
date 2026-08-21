@@ -4,3 +4,4 @@
 *.out
 .envrc
 .terraform/
+/dist-extra/
