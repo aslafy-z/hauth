@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -387,10 +388,16 @@ func (a *App) Install(ctx context.Context, harness string) (string, error) {
 	if _, ok := adapter.Get(harness); !ok {
 		return "", fmt.Errorf("unknown harness %q", harness)
 	}
-	argv, err := installer.Argv(harness)
-	if err != nil {
-		return "", err
+	if !installer.Known(harness) {
+		return "", fmt.Errorf("no installer for harness %q", harness)
 	}
+	// Run our own `install` subcommand in the pty so the installer's
+	// progress streams through the session like a login flow.
+	self, err := os.Executable()
+	if err != nil {
+		return "", fmt.Errorf("locate hauth binary: %w", err)
+	}
+	argv := []string{self, "install", harness}
 	m := adapter.Method{
 		ID:      "install",
 		Title:   "Install",

@@ -13,10 +13,11 @@ func newInstallCmd(f *rootFlags) *cobra.Command {
 	var force bool
 	cmd := &cobra.Command{
 		Use:   "install [harness...]",
-		Short: "Install harness CLIs through mise",
+		Short: "Install harness CLIs",
 		Long: "Installs the given harness CLIs (or every missing one when no\n" +
-			"argument is given) using `mise use -g`, so the tools are pinned in\n" +
-			"the global mise config and survive workspace restarts.",
+			"argument is given). Release binaries are downloaded into\n" +
+			"~/.local/bin; harnesses without published binaries use their\n" +
+			"official install script.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if _, err := setup(f, nil); err != nil {
 				return err

@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Workspace startup for the hauth HAPI image: installs HAPI and the selected
-# harness CLIs with mise, starts the hauth agent on loopback, then starts the
-# HAPI hub and runner. Idempotent across workspace restarts.
+# Workspace startup for the hauth HAPI image: HAPI (node + the hub package)
+# is baked into the image, harness CLIs install natively with
+# `hauth install`, then the hauth agent, HAPI hub, and HAPI runner start.
+# Idempotent across workspace restarts.
 
 AGENT_HARNESS="${AGENT_HARNESS:-hapi-only}"
 HOME="${HOME:-/home/coder}"
 PROJECT_DIR="${PROJECT_DIR:-${HOME}/project}"
 HAPI_HOME="${HAPI_HOME:-${HOME}/.hapi}"
-MISE_GLOBAL_CONFIG_DIR="${MISE_GLOBAL_CONFIG_DIR:-${HOME}/.config/mise}"
-MISE_CONFIG_FILE="${MISE_CONFIG_FILE:-${MISE_GLOBAL_CONFIG_DIR}/config.toml}"
+HAPI_NPM_PACKAGE="${HAPI_NPM_PACKAGE:-@twsxtd/hapi}"
 HAPI_HOST="${HAPI_HOST:-127.0.0.1}"
 HAPI_PORT="${HAPI_PORT:-3006}"
 HAUTH_HOST="${HAUTH_HOST:-127.0.0.1}"
@@ -19,115 +19,77 @@ HAUTH_BIN="${HAUTH_BIN:-/usr/local/bin/hauth}"
 HAUTH_LISTEN="${HAUTH_LISTEN:-${HAUTH_HOST}:${HAUTH_PORT}}"
 CLI_API_TOKEN="${CLI_API_TOKEN:-token}"
 
-export HOME PROJECT_DIR HAPI_HOME MISE_CONFIG_FILE CLI_API_TOKEN HAUTH_LISTEN
+export HOME PROJECT_DIR HAPI_HOME CLI_API_TOKEN HAUTH_LISTEN
 
 ensure_dirs() {
   mkdir -p \
     "${PROJECT_DIR}" \
     "${HAPI_HOME}" \
-    "${HOME}/.local/bin" \
-    "${MISE_GLOBAL_CONFIG_DIR}"
+    "${HOME}/.local/bin"
 
   if [ -d "${PROJECT_DIR}" ] && [ "$(id -u)" -ne 0 ] && [ ! -w "${PROJECT_DIR}" ] && command -v sudo >/dev/null 2>&1 && sudo -n true >/dev/null 2>&1; then
     sudo chown "$(id -u):$(id -g)" "${PROJECT_DIR}" || true
   fi
 }
 
-ensure_mise() {
-  if command -v mise >/dev/null 2>&1; then
-    mise --version
+setup_path() {
+  export PATH="${HOME}/.local/bin:${PATH}"
+}
+
+# HAPI is baked into the image at build time. If it is missing (custom
+# image, upgraded package name), install it into the user prefix with npm.
+ensure_hapi() {
+  if command -v hapi >/dev/null 2>&1; then
     return 0
   fi
 
-  echo "mise is not installed or not on PATH." >&2
-  echo "Install mise in the workspace base image." >&2
-  return 1
+  if ! command -v npm >/dev/null 2>&1; then
+    echo "hapi is not installed and npm is unavailable to install it." >&2
+    echo "Bake ${HAPI_NPM_PACKAGE} or npm into the workspace image." >&2
+    return 1
+  fi
+
+  echo "Installing ${HAPI_NPM_PACKAGE} into ${HOME}/.local"
+  npm install -g --prefix "${HOME}/.local" "${HAPI_NPM_PACKAGE}"
 }
 
-setup_path() {
-  export PATH="${HOME}/.local/bin:${HOME}/.local/share/mise/shims:${PATH}"
-}
-
-write_mise_config() {
+selected_harnesses() {
   case "${AGENT_HARNESS}" in
     hapi-only)
-      cat >"${MISE_CONFIG_FILE}" <<'CONFIG'
-[tools]
-node = "22"
-"npm:@twsxtd/hapi" = "latest"
-gh = "latest"
-CONFIG
+      echo "gh"
       ;;
     code)
-      cat >"${MISE_CONFIG_FILE}" <<'CONFIG'
-[tools]
-node = "22"
-"npm:@twsxtd/hapi" = "latest"
-gh = "latest"
-claude-code = "latest"
-CONFIG
+      echo "gh claude"
       ;;
     agy)
-      cat >"${MISE_CONFIG_FILE}" <<'CONFIG'
-[tools]
-node = "22"
-"npm:@twsxtd/hapi" = "latest"
-gh = "latest"
-antigravity-cli = "latest"
-CONFIG
+      echo "gh agy"
       ;;
     codex)
-      cat >"${MISE_CONFIG_FILE}" <<'CONFIG'
-[tools]
-node = "22"
-"npm:@twsxtd/hapi" = "latest"
-gh = "latest"
-codex = "latest"
-CONFIG
+      echo "gh codex"
       ;;
     opencode)
-      cat >"${MISE_CONFIG_FILE}" <<'CONFIG'
-[tools]
-node = "22"
-"npm:@twsxtd/hapi" = "latest"
-gh = "latest"
-opencode = "latest"
-CONFIG
+      echo "gh opencode"
       ;;
     all)
-      cat >"${MISE_CONFIG_FILE}" <<'CONFIG'
-[tools]
-node = "22"
-"npm:@twsxtd/hapi" = "latest"
-gh = "latest"
-claude-code = "latest"
-antigravity-cli = "latest"
-codex = "latest"
-opencode = "latest"
-CONFIG
+      echo "gh claude agy codex opencode"
       ;;
     *)
       echo "Unsupported AGENT_HARNESS: ${AGENT_HARNESS}" >&2
       exit 1
       ;;
   esac
-
-  echo "Generated mise config at ${MISE_CONFIG_FILE}"
-  cat "${MISE_CONFIG_FILE}"
 }
 
-mise_install_tools() {
-  echo "Installing tools from global mise config ${MISE_CONFIG_FILE}"
+install_harness_clis() {
+  local harnesses
+  harnesses="$(selected_harnesses)"
 
-  if ! mise install; then
-    echo "mise install failed for AGENT_HARNESS=${AGENT_HARNESS}" >&2
-    echo "Config used:" >&2
-    cat "${MISE_CONFIG_FILE}" >&2
+  echo "Installing harness CLIs: ${harnesses}"
+  # shellcheck disable=SC2086
+  if ! "${HAUTH_BIN}" install ${harnesses}; then
+    echo "hauth install failed for: ${harnesses}" >&2
     return 1
   fi
-
-  mise reshim || true
-  eval "$(mise env -s bash)"
 }
 
 verify_binary() {
@@ -182,10 +144,8 @@ verify_selected_binaries() {
 install_hapi_and_selected_harnesses() {
   ensure_dirs
   setup_path
-  ensure_mise
-  write_mise_config
-  mise trust "${MISE_CONFIG_FILE}"
-  mise_install_tools
+  ensure_hapi
+  install_harness_clis
   verify_selected_binaries
 }
 

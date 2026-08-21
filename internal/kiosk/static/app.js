@@ -204,7 +204,7 @@
 
     const notes = [];
     if (!view.installed && !view.can_install)
-      notes.push("CLI not installed (mise not found)");
+      notes.push("CLI not installed");
     if (!view.can_logout && view.logout_reason) notes.push("log out unavailable: " + view.logout_reason);
     if (!view.can_login && view.login_reason && view.login_reason !== "CLI not installed")
       notes.push("log in unavailable: " + view.login_reason);
