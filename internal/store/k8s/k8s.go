@@ -92,8 +92,8 @@ func SecretName(prefix, user string) string {
 	}
 	sum := sha256.Sum256([]byte(user))
 	suffix := hex.EncodeToString(sum[:])[:8]
-	if max := maxLen - len(suffix) - 1; len(name) > max {
-		name = name[:max]
+	if limit := maxLen - len(suffix) - 1; len(name) > limit {
+		name = name[:limit]
 	}
 	return strings.Trim(name, "-") + "-" + suffix
 }

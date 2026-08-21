@@ -47,7 +47,7 @@ type Rule struct {
 // LineDetector applies ordered rules to each line. A generic URL fallback is
 // appended unless disabled; the BROWSER shim remains the primary URL source.
 type LineDetector struct {
-	Rules []Rule
+	Rules         []Rule
 	NoURLFallback bool
 
 	fired map[int]bool

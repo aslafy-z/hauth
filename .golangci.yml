@@ -5,6 +5,11 @@ linters:
   enable:
     - misspell
     - revive
+  settings:
+    revive:
+      rules:
+        - name: unused-parameter
+          disabled: true
   exclusions:
     generated: lax
     presets:
