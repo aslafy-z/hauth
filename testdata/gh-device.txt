@@ -1,0 +1,10 @@
+[0;90m- Logging into github.com[0m
+[1m! First copy your one-time code: 90AB-CDEF[0m
+Press Enter to open https://github.com/login/device in your browser...
+[2K- Waiting for authentication...\ Waiting for authentication...| Waiting for authentication...
+! Failed opening a web browser at https://github.com/login/device
+  Please try entering the URL in your browser manually
+✓ Authentication complete.
+- gh config set -h github.com git_protocol https
+✓ Configured git protocol
+✓ Logged in as octocat

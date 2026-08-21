@@ -1,0 +1,4 @@
+Open https://auth.example.com/device?user=demo
+Enter code: CODE-1234
+Paste code: 
+Login successful

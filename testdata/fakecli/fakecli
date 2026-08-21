@@ -1,0 +1,39 @@
+#!/bin/sh
+# fakecli: a stand-in harness CLI for hauth end-to-end tests and demos.
+# It mimics the browser-free paste-code login shape of the real CLIs.
+set -eu
+
+cred_dir="${HOME}/.config/fakecli"
+cred="${cred_dir}/credentials.json"
+
+case "${1:-}" in
+login)
+  # Real CLIs try to open a browser first; this exercises the shim.
+  if [ -n "${BROWSER:-}" ]; then
+    "$BROWSER" "https://auth.example.com/device?user=demo" || true
+  fi
+  echo "Open https://auth.example.com/device?user=demo"
+  echo "Enter code: CODE-1234"
+  printf "Paste code: "
+  read -r code
+  mkdir -p "$cred_dir"
+  printf '{"token":"fake-%s","account":"demo@example.com"}\n' "$code" >"$cred"
+  chmod 600 "$cred"
+  echo "Login successful"
+  ;;
+status)
+  if [ -f "$cred" ]; then
+    echo "Logged in as demo@example.com"
+  else
+    echo "Not logged in" >&2
+    exit 1
+  fi
+  ;;
+logout)
+  rm -f "$cred"
+  ;;
+*)
+  echo "usage: fakecli login|status|logout" >&2
+  exit 2
+  ;;
+esac

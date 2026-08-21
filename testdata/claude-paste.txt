@@ -1,0 +1,10 @@
+[2J[H [38;5;208mClaude Code[0m
+ Select login method:
+   1. Claude account with subscription
+⠋ Opening browser...⠙ Opening browser...[2K
+ Browser didn't open? Use the url below to sign in:
+
+ https://claude.ai/oauth/authorize?code=true&client_id=9d1c250a-e61b-44d9-88ed-5944d1962f5e&response_type=code&scope=org%3Acreate_api_key
+
+ Paste code here if prompted > 
+Login successful. Press Enter to continue
