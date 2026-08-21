@@ -27,7 +27,7 @@ The Coder provisioner must be able to authenticate to the target cluster. If Cod
 
 The default workspace image is `ghcr.io/aslafy-z/hauth-hapi:latest`, built from [deploy/docker/Dockerfile.hapi](../docker/Dockerfile.hapi). Any replacement image must ship Node with the HAPI package, the hauth binary at `/usr/local/bin/hauth`, and the startup script at `/opt/hauth/start-hapi.sh`.
 
-Set the `workspace_apps_domain` template variable to your Coder wildcard access domain without the leading `*.` (for example `apps.coder.example.com`). The hauth kiosk validates `Host` and `Origin` headers by exact hostname; this variable lets the template compute the Agent Auth app hostname and pass it through `HAUTH_ALLOWED_ORIGINS`. Without it, the kiosk is reachable through an SSH tunnel (`coder ssh` port-forward) but rejects the proxied Coder app.
+The hauth kiosk enforces a same-origin policy on browser requests, so the proxied Coder app and SSH tunnels both work without any hostname configuration.
 
 ## Architecture
 
@@ -56,7 +56,7 @@ hauth keeps credential bundles under `/home/coder/.local/share/hauth/store` on t
 | Agent harness | `all` | which harness CLIs `hauth install` sets up at startup; `none` skips HAPI and hauth |
 | HAPI CLI API token | `token` | passed to HAPI as `CLI_API_TOKEN`; change it for shared or sensitive environments |
 
-Template variables: `namespace` (default `coder-workspaces`), `use_kubeconfig`, `workspace_apps_domain`, `enable_github_external_auth`, `github_external_auth_id`.
+Template variables: `namespace` (default `coder-workspaces`), `use_kubeconfig`, `enable_github_external_auth`, `github_external_auth_id`.
 
 ## GitHub external auth
 

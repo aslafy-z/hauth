@@ -3,9 +3,10 @@
 //
 // The kiosk has no authentication of its own. It binds to loopback only and
 // relies on whatever fronts it (a Coder app with owner-only sharing, an SSH
-// tunnel, Tailscale serve) to control who can reach it. Origin and Host are
-// checked so a hostile web page in the user's browser cannot drive it
-// cross-origin.
+// tunnel, Tailscale serve) to control who can reach it. A same-origin check
+// on the Origin header stops a hostile web page in the user's browser from
+// driving it cross-origin, without requiring the fronting hostname to be
+// configured.
 package kiosk
 
 import (
@@ -30,9 +31,11 @@ type Options struct {
 	// Listen is the address to bind. The host part must resolve to a
 	// loopback address; anything else is refused.
 	Listen string
-	// AllowedOrigins lists extra origins (or bare hosts) accepted in Host
-	// and Origin checks, e.g. the Coder app hostname. Loopback origins are
-	// always allowed so SSH tunnels work.
+	// AllowedOrigins lists extra origins (or bare hosts) accepted even
+	// when they differ from the request's Host. Same-origin requests and
+	// loopback origins are always accepted, so proxied apps and SSH
+	// tunnels work without configuration; this is only for fronts where
+	// the page is served from a different host than the kiosk API.
 	AllowedOrigins []string
 }
 
@@ -214,18 +217,20 @@ func (s *Server) routes() http.Handler {
 	return mux
 }
 
-// checkOriginHost rejects requests whose Host or Origin is neither loopback
-// nor explicitly allowed. Loopback is always accepted so port-forwarded
-// tunnels keep working without configuration.
+// checkOriginHost enforces a same-origin policy: when a browser sends an
+// Origin header it must match the request's Host (or be loopback or
+// explicitly allowed). This stops cross-origin requests from other sites
+// without the deployer having to configure the fronting hostname; proxied
+// fronts like Coder subdomain apps work out of the box because the page and
+// its API calls share one host. Requests without an Origin header pass: the
+// fronting proxy is the authentication boundary, and non-browser clients
+// have no origin to check.
 func (s *Server) checkOriginHost(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !s.hostAllowed(hostnameOf(r.Host)) {
-			writeErr(w, http.StatusForbidden, fmt.Errorf("host %q not allowed", r.Host))
-			return
-		}
 		if origin := r.Header.Get("Origin"); origin != "" && origin != "null" {
-			if !s.hostAllowed(hostnameOf(origin)) {
-				writeErr(w, http.StatusForbidden, fmt.Errorf("origin %q not allowed", origin))
+			oh := hostnameOf(origin)
+			if oh != hostnameOf(r.Host) && !s.hostAllowed(oh) {
+				writeErr(w, http.StatusForbidden, fmt.Errorf("origin %q does not match host %q", origin, r.Host))
 				return
 			}
 		}

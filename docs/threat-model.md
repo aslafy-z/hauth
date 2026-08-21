@@ -17,7 +17,7 @@ The kiosk binds `127.0.0.1` only and refuses configuration to a non-loopback add
 Consequences:
 
 - Any process inside the workspace running as any user that can reach loopback can drive the kiosk. In practice workspace pods are single-user; a co-resident malicious process already has the user's files, including the credential caches themselves, so the kiosk adds no privilege.
-- `Origin` and `Host` headers are validated against `HAUTH_ALLOWED_ORIGINS` to stop cross-origin requests from a browser tab reaching the forwarded port. Loopback origins are always allowed so tunnels work.
+- Browser requests are held to a same-origin policy: an `Origin` header must match the request's `Host` (or be loopback, or listed in `HAUTH_ALLOWED_ORIGINS` for fronts that serve the page from a different host). This stops cross-origin requests from a hostile tab reaching the forwarded port without requiring the fronting hostname to be configured. Requests without an `Origin` pass; the fronting proxy is the authentication boundary. Residual risk: DNS rebinding against a locally forwarded port pairs a matching Origin and Host; modern browsers' local-network access protections mitigate this, and the fronting proxy is unaffected by it.
 
 ### Store contents
 

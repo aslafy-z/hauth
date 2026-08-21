@@ -38,7 +38,6 @@ resource "coder_script" "hauth_agent" {
 
     export HAUTH_USER="${data.coder_workspace_owner.me.name}"
     export HAUTH_INSTANCE="${data.coder_workspace.me.name}"
-    export HAUTH_ALLOWED_ORIGINS="${data.coder_workspace.me.access_url}"
     export HAUTH_LISTEN="${var.hauth_listen}"
     export HAUTH_STORE="file"
     export HAUTH_STORE_PATH="${var.hauth_store_path}"

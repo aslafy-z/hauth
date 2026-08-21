@@ -33,19 +33,6 @@ variable "namespace" {
   default     = "coder-workspaces"
 }
 
-variable "workspace_apps_domain" {
-  type        = string
-  description = <<-EOF
-  Coder wildcard access domain without the leading "*." (for example
-  "apps.coder.example.com" when the wildcard access URL is
-  "*.apps.coder.example.com"). Used to compute the exact hostname of the
-  Agent Auth app so the hauth kiosk accepts proxied requests. The kiosk
-  matches Host and Origin headers by exact hostname; leave empty only if you
-  front the kiosk through a tunnel instead of the Coder app.
-  EOF
-  default     = ""
-}
-
 variable "enable_github_external_auth" {
   type        = bool
   description = "Export GH_TOKEN from a Coder external auth provider into workspaces. hauth then reports gh as managed externally and leaves it alone."
@@ -281,13 +268,6 @@ resource "coder_app" "hapi" {
 }
 
 locals {
-  access_host = trimsuffix(trimprefix(trimprefix(data.coder_workspace.me.access_url, "https://"), "http://"), "/")
-
-  # Subdomain app hostname format: {app}--{agent}--{workspace}--{owner}.
-  auth_app_host = var.workspace_apps_domain == "" ? "" : "auth--main--${data.coder_workspace.me.name}--${data.coder_workspace_owner.me.name}.${var.workspace_apps_domain}"
-
-  allowed_origins = join(",", compact([local.auth_app_host, local.access_host]))
-
   # The store lives on the persistent home volume; point HAUTH_STORE_PATH
   # at a shared volume to sync credentials across workspaces.
   store_env = {
@@ -303,11 +283,10 @@ locals {
     CODER_AGENT_TOKEN = coder_agent.main.token
     AGENT_HARNESS     = data.coder_parameter.agent_harness.value
     CLI_API_TOKEN     = data.coder_parameter.hapi_cli_api_token.value
-    PATH              = "/home/coder/.local/bin:/home/coder/.local/share/mise/shims:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+    PATH              = "/home/coder/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
-    HAUTH_USER            = data.coder_workspace_owner.me.name
-    HAUTH_INSTANCE        = data.coder_workspace.me.name
-    HAUTH_ALLOWED_ORIGINS = local.allowed_origins
+    HAUTH_USER     = data.coder_workspace_owner.me.name
+    HAUTH_INSTANCE = data.coder_workspace.me.name
   }, local.store_env, local.github_env)
 
   workspace_labels = {

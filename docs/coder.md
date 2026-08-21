@@ -8,7 +8,7 @@ hauth never reads `CODER_*` variables. The template maps Coder identity onto hau
 |---|---|---|
 | `HAUTH_USER` | `data.coder_workspace_owner.me.name` | store identity: which per-user store entry to use |
 | `HAUTH_INSTANCE` | `data.coder_workspace.me.name` | lease identity: which workspace holds a refresh lease |
-| `HAUTH_ALLOWED_ORIGINS` | the Coder access URL host | kiosk Origin/Host validation for the proxied app |
+| `HAUTH_ALLOWED_ORIGINS` | usually unset | only needed when a front serves the kiosk page from a different host than its API; the kiosk's same-origin check covers Coder apps and tunnels by itself |
 
 ## Template snippet
 

@@ -145,8 +145,15 @@ func TestHostAndOriginChecks(t *testing.T) {
 		{"127.0.0.1:43117", "", http.StatusOK},
 		{"localhost:43117", "http://localhost:8080", http.StatusOK},
 		{"kiosk.example.com", "https://kiosk.example.com", http.StatusOK},
-		{"evil.example.net", "", http.StatusForbidden},
+		// Same-origin policy: any proxied host works when the page and its
+		// requests share the host, with no configuration.
+		{"auth--main--ws--user.apps.coder.example.com", "https://auth--main--ws--user.apps.coder.example.com", http.StatusOK},
+		{"auth--main--ws--user.apps.coder.example.com", "", http.StatusOK},
+		// Cross-origin browser requests are rejected.
 		{"127.0.0.1:43117", "https://evil.example.net", http.StatusForbidden},
+		{"auth--main--ws--user.apps.coder.example.com", "https://evil.example.net", http.StatusForbidden},
+		// Explicitly allowed origins may differ from the host.
+		{"anything.example.org", "https://kiosk.example.com", http.StatusOK},
 		{"127.0.0.1:43117", "http://[::1]:9999", http.StatusOK},
 	}
 	for _, tc := range cases {

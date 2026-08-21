@@ -151,7 +151,7 @@ The store is a directory (`--store-path`, default `~/.local/share/hauth/store`) 
 
 [deploy/coder-hapi](deploy/coder-hapi) is a complete, importable Kubernetes template: workspace pod with persistent home, the `ghcr.io/aslafy-z/hauth-hapi` image, HAPI hub and runner, and hauth as the auth companion, storing credentials on the home volume. Each release ships it as `hauth-coder-hapi-template.zip`, ready to upload in Coder's template creation UI.
 
-[deploy/coder](deploy/coder) has the minimal snippet for adding hauth to an existing template: a `coder_script` that starts `hauth agent` with `HAUTH_USER`/`HAUTH_INSTANCE`/`HAUTH_ALLOWED_ORIGINS` mapped from Coder workspace variables, and an owner-only `coder_app` for the kiosk. The binary never reads `CODER_*` variables itself. See [docs/coder.md](docs/coder.md).
+[deploy/coder](deploy/coder) has the minimal snippet for adding hauth to an existing template: a `coder_script` that starts `hauth agent` with `HAUTH_USER`/`HAUTH_INSTANCE` mapped from Coder workspace variables, and an owner-only `coder_app` for the kiosk. The binary never reads `CODER_*` variables itself. See [docs/coder.md](docs/coder.md).
 
 ## HAPI workspace image
 
@@ -159,7 +159,7 @@ The store is a directory (`--store-path`, default `~/.local/share/hauth/store`) 
 
 ## Security model
 
-The kiosk binds loopback only and has no authentication of its own; whatever fronts it (Coder app, SSH tunnel, Tailscale) is responsible for access control. `Origin` and `Host` headers are checked against `HAUTH_ALLOWED_ORIGINS`. Credential files are written `0600`, store entries are `0600` in `0700` directories, and session output is redacted before it reaches logs or the UI event stream. Details and non-goals: [docs/threat-model.md](docs/threat-model.md).
+The kiosk binds loopback only and has no authentication of its own; whatever fronts it (Coder app, SSH tunnel, Tailscale) is responsible for access control. Browser requests are held to a same-origin policy (`Origin` must match `Host`; `HAUTH_ALLOWED_ORIGINS` can add cross-host fronts). Credential files are written `0600`, store entries are `0600` in `0700` directories, and session output is redacted before it reaches logs or the UI event stream. Details and non-goals: [docs/threat-model.md](docs/threat-model.md).
 
 ## Contributing
 
