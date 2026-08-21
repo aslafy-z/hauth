@@ -40,11 +40,19 @@ type App struct {
 	mu        sync.Mutex
 	sessions  map[string]*session.Session // by session id
 	byHarness map[string]string           // harness -> active session id
+	artifacts map[string]*sessionArtifacts
 	status    map[string]cachedStatus
 
 	subMu sync.Mutex
 	subs  map[int]chan kiosk.Event
 	nextS int
+}
+
+// sessionArtifacts accumulates what a login session has surfaced so far.
+// Live events are not replayed to clients that connect mid-login; these
+// fields ride along in HarnessView instead.
+type sessionArtifacts struct {
+	url, code, prompt string
 }
 
 type cachedStatus struct {
@@ -67,6 +75,7 @@ func New(cfg Config) *App {
 		cfg:       cfg,
 		sessions:  map[string]*session.Session{},
 		byHarness: map[string]string{},
+		artifacts: map[string]*sessionArtifacts{},
 		status:    map[string]cachedStatus{},
 		subs:      map[int]chan kiosk.Event{},
 	}
@@ -197,6 +206,11 @@ func (a *App) view(ctx context.Context, ad adapter.Adapter, st adapter.Status) k
 			state, _ := s.State()
 			v.SessionID = id
 			v.SessionState = string(state)
+			if art := a.artifacts[name]; art != nil {
+				v.SessionURL = art.url
+				v.SessionCode = art.code
+				v.SessionPrompt = art.prompt
+			}
 		}
 	}
 	a.mu.Unlock()
@@ -271,6 +285,7 @@ func (a *App) StartLogin(ctx context.Context, harness, method string) (string, e
 		delete(a.sessions, oldID)
 		delete(a.byHarness, harness)
 	}
+	a.artifacts[harness] = &sessionArtifacts{}
 	a.mu.Unlock()
 
 	id := newSessionID()
@@ -295,6 +310,21 @@ func (a *App) StartLogin(ctx context.Context, harness, method string) (string, e
 		StateDir: a.cfg.StateDir,
 		OnEvent: func(ev adapter.Event) {
 			out := kiosk.Event{Harness: harness, SessionID: id, URL: ev.URL, Code: ev.Code, Prompt: ev.Prompt}
+			a.mu.Lock()
+			art := a.artifacts[harness]
+			if art == nil {
+				art = &sessionArtifacts{}
+				a.artifacts[harness] = art
+			}
+			switch ev.Kind {
+			case adapter.EventURL:
+				art.url = ev.URL
+			case adapter.EventCode:
+				art.code = ev.Code
+			case adapter.EventPrompt:
+				art.prompt = ev.Prompt
+			}
+			a.mu.Unlock()
 			switch ev.Kind {
 			case adapter.EventURL:
 				out.Type = "session_url"
@@ -433,6 +463,7 @@ func (a *App) Install(ctx context.Context, harness string) (string, error) {
 		delete(a.sessions, oldID)
 		delete(a.byHarness, harness)
 	}
+	a.artifacts[harness] = &sessionArtifacts{}
 	a.mu.Unlock()
 
 	id := newSessionID()

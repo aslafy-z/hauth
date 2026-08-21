@@ -2,47 +2,35 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
   <meta name="color-scheme" content="dark">
   <title>hauth</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230f172a'/%3E%3Cpath d='M9 7v18M9 16h9M18 7v18M23 12v8' stroke='%2360a5fa' stroke-width='3' stroke-linecap='round' fill='none'/%3E%3C/svg%3E">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b0e14'/%3E%3Cpath d='M9 7v18M9 16h9M18 7v18M23 12v8' stroke='%23e8b04b' stroke-width='3' stroke-linecap='round' fill='none'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="vendor/xterm.css">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <header>
-    <h1>hauth</h1>
-    <span id="conn" class="conn" title="event stream state"></span>
+    <h1 class="wordmark">hauth</h1>
+    <span id="conn" class="conn" title="event stream"></span>
   </header>
-  <main id="cards" aria-live="polite"></main>
-  <template id="card-tpl">
-    <section class="card">
-      <div class="card-head">
-        <span class="dot" aria-hidden="true"></span>
-        <h2 class="name"></h2>
-        <span class="badge"></span>
-      </div>
-      <p class="detail"></p>
-      <p class="account"></p>
-      <p class="lease"></p>
-      <div class="actions"></div>
-      <div class="session" hidden>
-        <div class="session-state"></div>
-        <a class="url" target="_blank" rel="noopener noreferrer"></a>
-        <button class="code chip" type="button" aria-live="assertive" title="tap to copy"></button>
-        <p class="prompt"></p>
-        <form class="input-row" hidden>
-          <input class="session-input" autocomplete="off" autocapitalize="off" spellcheck="false">
-          <button type="submit">Send</button>
-        </form>
-        <div class="session-buttons">
-          <button class="toggle-term" type="button">Terminal</button>
-          <button class="cancel danger" type="button">Cancel</button>
-        </div>
-        <div class="term" hidden></div>
-      </div>
-    </section>
-  </template>
+
+  <main>
+    <div id="list" class="list" aria-live="polite"></div>
+  </main>
+
+  <div id="backdrop" class="backdrop"></div>
+
+  <aside id="sheet" class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-name">
+    <div class="sheet-grip" aria-hidden="true"></div>
+    <div class="sheet-head">
+      <span id="sheet-name" class="name"></span>
+      <span id="sheet-badge" class="badge"></span>
+      <button id="sheet-close" class="close" aria-label="Close">&times;</button>
+    </div>
+    <div id="sheet-body" class="sheet-body"></div>
+  </aside>
+
   <script src="vendor/xterm.js"></script>
   <script src="vendor/addon-fit.js"></script>
   <script src="app.js"></script>

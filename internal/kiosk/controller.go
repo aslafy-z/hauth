@@ -47,6 +47,12 @@ type HarnessView struct {
 
 	SessionID    string `json:"session_id,omitempty"`
 	SessionState string `json:"session_state,omitempty"`
+	// Accumulated artifacts of the active session, so clients that
+	// connect (or reconnect) mid-login can rebuild the flow: live events
+	// are not replayed.
+	SessionURL    string `json:"session_url,omitempty"`
+	SessionCode   string `json:"session_code,omitempty"`
+	SessionPrompt string `json:"session_prompt,omitempty"`
 
 	// Installed reports whether the harness's CLI is on PATH; CanInstall
 	// is set when hauth knows how to install it.

@@ -35,6 +35,15 @@ brokered through a phone-friendly loopback kiosk, synced to a per-user credentia
 > login detectors ship with synthetic transcript fixtures; recording real CLI
 > transcripts is tracked in [docs/flows.md](docs/flows.md).
 
+## The kiosk
+
+<p align="center">
+  <img src="docs/screenshots/overview.png" alt="Glanceable status list" width="58%" />
+  <img src="docs/screenshots/login-mobile.png" alt="Guided login flow on a phone" width="27%" />
+</p>
+
+A glanceable status list, and a guided login flow: open the sign-in link on any device, tap to copy the one-time code, paste back when the CLI asks. A collapsed terminal panel (with on-screen arrow and enter keys for phones) is there when a flow goes off script.
+
 ## The problem
 
 Interactive CLIs (`gh`, `claude`, `codex`, `opencode`, `agy`) authenticate via browser OAuth with loopback redirects and cache credentials in the user's home directory. In a cloud workspace (for example a Coder pod) this fails twice: the user's browser cannot reach the pod's loopback, and the credential cache dies with the home volume or is duplicated across workspaces.
