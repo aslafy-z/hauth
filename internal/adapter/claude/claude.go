@@ -67,12 +67,13 @@ func pasteDetector() adapter.Detector {
 func (c *claudeAdapter) Methods() []adapter.Method {
 	return []adapter.Method{
 		{
-			ID:      "paste_code",
-			Title:   "Browser on another device, paste the code",
-			Argv:    []string{"claude", "/login"},
-			Detect:  pasteDetector,
-			Input:   adapter.InputCode,
-			Timeout: 15 * time.Minute,
+			ID:           "paste_code",
+			Title:        "Browser on another device, paste the code",
+			Argv:         []string{"claude", "/login"},
+			Detect:       pasteDetector,
+			Input:        adapter.InputCode,
+			Timeout:      15 * time.Minute,
+			EndOnSuccess: true, // /login returns to the REPL, which never exits
 		},
 		{
 			// setup-token runs the same paste-code dance and then prints a

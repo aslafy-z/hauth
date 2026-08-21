@@ -148,6 +148,10 @@ type Method struct {
 	Detect  func() Detector // fresh detector per session; nil means URL-regex only
 	Input   InputKind
 	Timeout time.Duration
+	// EndOnSuccess ends the session shortly after a detected success.
+	// Needed for CLIs whose login happens inside a REPL or TUI that never
+	// exits on its own (claude, agy).
+	EndOnSuccess bool
 }
 
 // Adapter is implemented once per harness CLI.

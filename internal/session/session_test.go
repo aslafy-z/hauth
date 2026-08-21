@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -152,6 +153,35 @@ func TestSessionCancel(t *testing.T) {
 	}
 	if state, _ := s.State(); state != session.StateCanceled {
 		t.Fatalf("state = %s, want canceled", state)
+	}
+}
+
+// A REPL-style CLI logs in and keeps running; the session must end on its
+// own (EndOnSuccess) and classify as succeeded even though it was canceled
+// rather than exiting.
+func TestSessionEndOnSuccessOutlivesCancel(t *testing.T) {
+	m := adapter.Method{
+		ID:   "repl",
+		Argv: []string{"sh", "-c", "echo 'Login successful'; sleep 60"},
+		Detect: func() adapter.Detector {
+			return adapter.NewLineDetector(
+				adapter.Rule{Pattern: regexp.MustCompile(`Login successful`), Kind: adapter.EventSuccess, Once: true},
+			)
+		},
+		EndOnSuccess: true,
+	}
+	s, err := session.Start(context.Background(), "fake", m, session.Options{Home: t.TempDir(), StateDir: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-s.Done():
+	case <-time.After(20 * time.Second):
+		s.Cancel()
+		t.Fatal("EndOnSuccess did not finish the session")
+	}
+	if state, _ := s.State(); state != session.StateSucceeded {
+		t.Fatalf("state = %s, want succeeded", state)
 	}
 }
 

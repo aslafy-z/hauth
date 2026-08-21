@@ -65,8 +65,9 @@ func (a *agyAdapter) Methods() []adapter.Method {
 					adapter.Rule{Pattern: regexp.MustCompile(`(?i)authentication failed or timed out|login failed`), Kind: adapter.EventFailure, Once: true},
 				)
 			},
-			Input:   adapter.InputFreeText,
-			Timeout: 15 * time.Minute,
+			Input:        adapter.InputFreeText,
+			Timeout:      15 * time.Minute,
+			EndOnSuccess: true, // the TUI stays open after signing in
 		},
 	}
 }

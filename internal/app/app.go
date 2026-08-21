@@ -274,6 +274,22 @@ func (a *App) StartLogin(ctx context.Context, harness, method string) (string, e
 	a.mu.Unlock()
 
 	id := newSessionID()
+	// Adopt as soon as the detector sees success, not only at process
+	// exit: REPL-style CLIs keep running after logging in, and the user
+	// must never have to adopt a login that hauth itself ran.
+	var adoptOnce sync.Once
+	adopt := func() {
+		adoptOnce.Do(func() {
+			if a.cfg.Syncer == nil {
+				return
+			}
+			if err := a.cfg.Syncer.Adopt(context.Background(), harness); err != nil {
+				a.cfg.Logf("push after login %s: %v", harness, err)
+			}
+			a.invalidate(harness)
+			a.publish(kiosk.Event{Type: "status_changed", Harness: harness})
+		})
+	}
 	opts := session.Options{
 		Home:     a.cfg.Home,
 		StateDir: a.cfg.StateDir,
@@ -286,8 +302,12 @@ func (a *App) StartLogin(ctx context.Context, harness, method string) (string, e
 				out.Type = "session_code"
 			case adapter.EventPrompt:
 				out.Type = "session_prompt"
+			case adapter.EventSuccess:
+				// Give the CLI a moment to finish writing credential files.
+				time.AfterFunc(2*time.Second, adopt)
+				return
 			default:
-				return // success/failure surfaces via session_state
+				return // failure surfaces via session_state
 			}
 			a.publish(out)
 		},
@@ -308,12 +328,11 @@ func (a *App) StartLogin(ctx context.Context, harness, method string) (string, e
 		<-s.Done()
 		state, code := s.State()
 		a.cfg.Logf("session %s (%s/%s) finished: %s (exit %d)", id, harness, m.ID, state, code)
-		if state == session.StateSucceeded && a.cfg.Syncer != nil {
+		if state == session.StateSucceeded {
 			// hauth ran this login itself, so recording and pushing the
-			// result is not silent adoption.
-			if err := a.cfg.Syncer.Adopt(context.Background(), harness); err != nil {
-				a.cfg.Logf("push after login %s: %v", harness, err)
-			}
+			// result is not silent adoption. No-op when the success event
+			// already adopted.
+			adopt()
 		}
 		a.invalidate(harness)
 		a.publish(kiosk.Event{Type: "session_state", Harness: harness, SessionID: id, State: string(state)})

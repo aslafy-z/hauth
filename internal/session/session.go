@@ -358,7 +358,14 @@ func (s *Session) handleEvent(ev adapter.Event) {
 		}
 		s.seenURLs[ev.URL] = true
 	case adapter.EventSuccess:
+		firstOK := !s.sawOK
 		s.sawOK = true
+		if firstOK && s.method.EndOnSuccess {
+			// REPL-style CLIs (claude, agy) stay open after a successful
+			// login; end the session for them after a short grace so file
+			// writes settle and the user sees the success output.
+			time.AfterFunc(5*time.Second, s.Cancel)
+		}
 	case adapter.EventFailure:
 		s.sawFail = true
 	}
@@ -381,14 +388,17 @@ func (s *Session) finalize() {
 	}
 	s.exitCode = exit
 	switch {
+	// A detected success outlives cancel and timeout: REPL-style CLIs
+	// keep running after logging in, and ending them must not demote a
+	// login that already happened.
+	case s.sawOK && !s.sawFail:
+		s.state = StateSucceeded
 	case s.canceled:
 		s.state = StateCanceled
 	case s.timedOut:
 		s.state = StateFailed
-	case s.sawFail && !s.sawOK:
+	case s.sawFail:
 		s.state = StateFailed
-	case s.sawOK:
-		s.state = StateSucceeded
 	case exit == 0:
 		s.state = StateSucceeded
 	default:
