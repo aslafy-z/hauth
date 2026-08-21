@@ -1,5 +1,6 @@
-Welcome to Antigravity CLI
-NO_BROWSER is set; using manual authentication.
-Visit this URL to sign in: https://accounts.google.com/o/oauth2/v2/auth?client_id=antigravity&redirect_uri=local
-Enter verification code: 
-Authentication complete. You are logged in.
+Welcome to the Antigravity CLI. You are currently not signed in.
+Signing in...
+Go to https://accounts.google.com/o/oauth2/v2/auth?client_id=example&redirect_uri=http%3A%2F%2F127.0.0.1%3A45123%2Foauth%2Fcallback&response_type=code to continue.
+Waiting for browser sign-in to complete...
+Authentication successful! You can close this window.
+Signed in as demo@example.com

@@ -47,11 +47,14 @@ One section per harness: the flow hauth drives, the env vars that short-circuit 
 
 ## agy (Antigravity CLI)
 
-- Method `paste_code`: run the CLI with remote-session hints so it prints a URL plus code instead of opening a browser.
+Verified against agy 1.1.17 on 2026-08-21 (installed via the official script).
+
+- No `login`, `logout`, or `status` subcommands exist; unknown subcommands fall through to the TUI. Method `interactive`: run `agy` plainly in the session pty; on first run the TUI walks through onboarding and sign-in, launching a browser OAuth flow with a loopback callback. The session's BROWSER shim captures the URL.
 - Env short-circuit: none documented.
-- Files: `~/.config/agy/**` (file fallback; no OS keyring assumed in workspace images). Sync policy: stable.
-- Logout: `/logout` typed into a pty session.
-- Fixture status: synthetic and the least certain of the five. Needs empirical answers to: which env makes agy print URL + code inside a pod, and where exactly credentials land without a keyring.
+- Files: tokens land in the OS keyring when a D-Bus session bus is reachable; on headless hosts and containers the CLI bypasses the keyring and stores tokens in a token directory under `~/.gemini/antigravity-cli/` (hauth syncs `~/.gemini/antigravity-cli/tokens/**`; directory name inferred from the CLI's file token storage internals, to be confirmed with a recorded pod login). Sync policy: stable.
+- Connection test: exit codes and output prove nothing because print mode falls back to an anonymous tier when unauthenticated. The expensive probe runs `agy --log-file <scratch> --print-timeout 45s -p ...` and parses the log: `applyAuthResult: email=...` means authenticated (account extracted); `You are not logged into Antigravity` means not. Both log signatures captured from real runs.
+- Logout: removes the file token directory; keyring-held credentials cannot be removed by hauth.
+- Fixture status: transcript synthetic but assembled from captured TUI text; log-parsing fixtures are real captures.
 
 ## fake (testing only)
 
