@@ -377,7 +377,7 @@ resource "kubernetes_deployment_v1" "workspace" {
         container {
           name              = "dev"
           image             = data.coder_parameter.workspace_image.value
-          image_pull_policy = "IfNotPresent"
+          image_pull_policy = "Always"
           command           = ["sh", "-c", coder_agent.main.init_script]
 
           security_context {
