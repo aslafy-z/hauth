@@ -22,6 +22,14 @@ func Register(a Adapter) {
 	registry[a.Name()] = a
 }
 
+// ResetRegistry drops all registered adapters. Only tests use it, to
+// re-register adapters against a different home directory.
+func ResetRegistry() {
+	mu.Lock()
+	defer mu.Unlock()
+	registry = map[string]Adapter{}
+}
+
 // Get returns the adapter for name.
 func Get(name string) (Adapter, bool) {
 	mu.RLock()
