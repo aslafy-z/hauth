@@ -102,7 +102,7 @@ hauth agent
 
 Open the kiosk through your platform's front door:
 
-- Coder: the `Agent Auth` app from [deploy/coder](deploy/coder), shared with the workspace owner only.
+- Coder: the `Agent Auth` app from one of the [Coder templates](deploy), shared with the workspace owner only.
 - SSH: `ssh -L 43117:127.0.0.1:43117 <workspace>` then browse to `http://127.0.0.1:43117`.
 - Tailscale: `tailscale serve 43117`.
 
@@ -149,13 +149,16 @@ The store is a directory (`--store-path`, default `~/.local/share/hauth/store`) 
 
 ## Coder integration
 
-[deploy/coder-hapi](deploy/coder-hapi) is a complete, importable Kubernetes template: workspace pod with persistent home, the `ghcr.io/aslafy-z/hauth-hapi` image, HAPI hub and runner, and hauth as the auth companion, storing credentials on the home volume. Each release ships it as `hauth-coder-hapi-template.zip`, ready to upload in Coder's template creation UI.
+Two complete, importable Kubernetes templates ship with each release, ready to upload in Coder's template creation UI:
 
-[deploy/coder](deploy/coder) has the minimal snippet for adding hauth to an existing template: a `coder_script` that starts `hauth agent` with `HAUTH_USER`/`HAUTH_INSTANCE` mapped from Coder workspace variables, and an owner-only `coder_app` for the kiosk. The binary never reads `CODER_*` variables itself. See [docs/coder.md](docs/coder.md).
+- [deploy/coder-template-hauth](deploy/coder-template-hauth) (`coder-template-hauth.zip`): workspace pod with persistent home and hauth as the auth companion. No purpose-built image needed: hauth is downloaded from the latest release at startup.
+- [deploy/coder-template-hapi-hauth](deploy/coder-template-hapi-hauth) (`coder-template-hapi-hauth.zip`): the same, plus a per-workspace [HAPI](https://hapi.run) hub and runner, using the `ghcr.io/aslafy-z/hauth-hapi` image.
+
+To add hauth to an existing template instead, see [docs/coder.md](docs/coder.md): a `coder_script` that starts `hauth agent` with `HAUTH_USER`/`HAUTH_INSTANCE` mapped from Coder workspace variables, and an owner-only `coder_app` for the kiosk. The binary never reads `CODER_*` variables itself.
 
 ## HAPI workspace image
 
-`ghcr.io/aslafy-z/hauth-hapi` is a ready-made Coder workspace image that bundles hauth, Node, and [HAPI](https://hapi.run), with a startup script that installs the selected harness CLIs via `hauth install`, starts `hauth agent` on `127.0.0.1:43117`, and starts the HAPI hub and runner. It is the default image of the [deploy/coder-hapi](deploy/coder-hapi) template.
+`ghcr.io/aslafy-z/hauth-hapi` is a ready-made Coder workspace image that bundles hauth, Node, and [HAPI](https://hapi.run), with a startup script that installs the selected harness CLIs via `hauth install`, starts `hauth agent` on `127.0.0.1:43117`, and starts the HAPI hub and runner. It is the default image of the [deploy/coder-template-hapi-hauth](deploy/coder-template-hapi-hauth) template.
 
 ## Security model
 

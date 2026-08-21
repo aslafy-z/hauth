@@ -14,8 +14,8 @@ This template provisions a Kubernetes pod as a Coder workspace with a persistent
 
 Two equivalent paths:
 
-- Download `hauth-coder-hapi-template.zip` from the [latest release](https://github.com/aslafy-z/hauth/releases/latest) and upload it in the Coder dashboard under Templates, Create template.
-- Or push this directory with the CLI: `coder templates push hauth-hapi -d deploy/coder-hapi`.
+- Download `coder-template-hapi-hauth.zip` from the [latest release](https://github.com/aslafy-z/hauth/releases/latest) and upload it in the Coder dashboard under Templates, Create template.
+- Or push this directory with the CLI: `coder templates push hapi-hauth -d deploy/coder-template-hapi-hauth`.
 
 Review the template variables when prompted; `namespace` defaults to `coder-workspaces`.
 

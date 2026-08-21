@@ -90,8 +90,7 @@ release:
   draft: false
   prerelease: auto
   extra_files:
-    # Built by the release workflow before goreleaser runs. The template
-    # zip is uploadable as-is in Coder's template creation UI; the snippet
-    # zip is for pasting into an existing template.
-    - glob: dist-extra/hauth-coder-hapi-template.zip
-    - glob: dist-extra/hauth-coder-snippet.zip
+    # Built by the release workflow before goreleaser runs; both are
+    # uploadable as-is in Coder's template creation UI.
+    - glob: dist-extra/coder-template-hapi-hauth.zip
+    - glob: dist-extra/coder-template-hauth.zip

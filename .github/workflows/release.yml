@@ -27,11 +27,11 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Package Coder template and snippet
+      - name: Package Coder templates
         run: |
           mkdir -p dist-extra
-          (cd deploy/coder-hapi && zip -X "${GITHUB_WORKSPACE}/dist-extra/hauth-coder-hapi-template.zip" main.tf README.md)
-          (cd deploy/coder && zip -X "${GITHUB_WORKSPACE}/dist-extra/hauth-coder-snippet.zip" main.tf README.md)
+          (cd deploy/coder-template-hapi-hauth && zip -X "${GITHUB_WORKSPACE}/dist-extra/coder-template-hapi-hauth.zip" main.tf README.md)
+          (cd deploy/coder-template-hauth && zip -X "${GITHUB_WORKSPACE}/dist-extra/coder-template-hauth.zip" main.tf README.md)
       - uses: goreleaser/goreleaser-action@v6
         with:
           version: "~> v2"

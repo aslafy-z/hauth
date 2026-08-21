@@ -2,7 +2,7 @@
 
 ## Deploying with Coder
 
-Use the snippet in [deploy/coder](../deploy/coder) (walkthrough in [coder.md](coder.md)) or the prebuilt workspace image `ghcr.io/aslafy-z/hauth-hapi`. The moving parts:
+Use one of the templates in [deploy/](../deploy) (walkthrough in [coder.md](coder.md)). The moving parts:
 
 - `hauth agent` starts from the workspace startup script, restores credentials, and serves the kiosk on `127.0.0.1:43117`.
 - An owner-only `coder_app` fronts the kiosk.
