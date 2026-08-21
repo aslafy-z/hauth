@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions and discussion
+    url: https://github.com/aslafy-z/hauth/discussions
+    about: Ask questions and discuss ideas before opening an issue
+  - name: Security reports
+    url: https://github.com/aslafy-z/hauth/security/advisories/new
+    about: Report vulnerabilities privately, never in a public issue

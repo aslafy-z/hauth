@@ -1,0 +1,22 @@
+name: Feature request
+description: Propose an improvement or a new harness adapter
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What is not possible or awkward today.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: For a new harness adapter, include the CLI name, where it stores credentials, and whether it has a browser-free login flow.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered

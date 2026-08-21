@@ -1,0 +1,53 @@
+name: Bug report
+description: Something misbehaves
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: hauth version
+      description: Output of `hauth version`
+      placeholder: v0.1.0
+    validations:
+      required: true
+  - type: dropdown
+    id: harness
+    attributes:
+      label: Harness involved
+      options:
+        - gh
+        - claude
+        - codex
+        - opencode
+        - agy
+        - none / general
+    validations:
+      required: true
+  - type: dropdown
+    id: store
+    attributes:
+      label: Store backend
+      options:
+        - file
+        - k8s
+        - not relevant
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Relevant agent or session output. Redact anything that looks like a token before pasting.
+      render: text
+  - type: textarea
+    id: env
+    attributes:
+      label: Environment
+      description: Platform (Coder, plain SSH, other), OS/arch, how hauth was installed.

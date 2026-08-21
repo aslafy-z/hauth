@@ -1,0 +1,91 @@
+version: 2
+
+project_name: hauth
+
+builds:
+  - id: hauth
+    main: ./cmd/hauth
+    binary: hauth
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X github.com/aslafy-z/hauth/internal/version.Version={{ .Version }}
+      - -X github.com/aslafy-z/hauth/internal/version.Commit={{ .Commit }}
+      - -X github.com/aslafy-z/hauth/internal/version.Date={{ .Date }}
+
+archives:
+  - id: default
+    formats:
+      - tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - README.md
+      - LICENSE
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs"
+      - "^test"
+      - "^chore"
+
+dockers:
+  - id: hauth-amd64
+    use: buildx
+    goos: linux
+    goarch: amd64
+    dockerfile: deploy/docker/Dockerfile.goreleaser
+    image_templates:
+      - ghcr.io/aslafy-z/hauth:{{ .Version }}-amd64
+    build_flag_templates:
+      - --platform=linux/amd64
+      - --label=org.opencontainers.image.title={{ .ProjectName }}
+      - --label=org.opencontainers.image.description=Harness auth broker for cloud workspaces
+      - --label=org.opencontainers.image.url=https://github.com/aslafy-z/hauth
+      - --label=org.opencontainers.image.source=https://github.com/aslafy-z/hauth
+      - --label=org.opencontainers.image.version={{ .Version }}
+      - --label=org.opencontainers.image.revision={{ .FullCommit }}
+      - --label=org.opencontainers.image.created={{ .Date }}
+      - --label=org.opencontainers.image.licenses=Apache-2.0
+  - id: hauth-arm64
+    use: buildx
+    goos: linux
+    goarch: arm64
+    dockerfile: deploy/docker/Dockerfile.goreleaser
+    image_templates:
+      - ghcr.io/aslafy-z/hauth:{{ .Version }}-arm64
+    build_flag_templates:
+      - --platform=linux/arm64
+      - --label=org.opencontainers.image.title={{ .ProjectName }}
+      - --label=org.opencontainers.image.description=Harness auth broker for cloud workspaces
+      - --label=org.opencontainers.image.url=https://github.com/aslafy-z/hauth
+      - --label=org.opencontainers.image.source=https://github.com/aslafy-z/hauth
+      - --label=org.opencontainers.image.version={{ .Version }}
+      - --label=org.opencontainers.image.revision={{ .FullCommit }}
+      - --label=org.opencontainers.image.created={{ .Date }}
+      - --label=org.opencontainers.image.licenses=Apache-2.0
+
+docker_manifests:
+  - name_template: ghcr.io/aslafy-z/hauth:{{ .Version }}
+    image_templates:
+      - ghcr.io/aslafy-z/hauth:{{ .Version }}-amd64
+      - ghcr.io/aslafy-z/hauth:{{ .Version }}-arm64
+  - name_template: ghcr.io/aslafy-z/hauth:latest
+    image_templates:
+      - ghcr.io/aslafy-z/hauth:{{ .Version }}-amd64
+      - ghcr.io/aslafy-z/hauth:{{ .Version }}-arm64
+
+release:
+  draft: false
+  prerelease: auto
