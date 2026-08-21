@@ -45,9 +45,14 @@ func (c *codexAdapter) Methods() []adapter.Method {
 			Title: "Device code",
 			Argv:  []string{"codex", "login", "--device-auth"},
 			Detect: func() adapter.Detector {
+				// Matches codex's real device-auth output: the link and
+				// the code each sit alone on their own line under the
+				// numbered instructions.
 				return adapter.NewLineDetector(
+					adapter.Rule{Pattern: regexp.MustCompile(`^\s*(?P<url>https://\S+)\s*$`), Kind: adapter.EventURL, Once: true},
 					adapter.Rule{Pattern: regexp.MustCompile(`(?i)(?:go to|visit)[:\s]+(?P<url>https://\S+)`), Kind: adapter.EventURL, Once: true},
 					adapter.Rule{Pattern: regexp.MustCompile(`(?i)code[:\s]+(?P<code>[A-Z0-9]{4}-[A-Z0-9]{4,})`), Kind: adapter.EventCode, Once: true},
+					adapter.Rule{Pattern: regexp.MustCompile(`^\s*(?P<code>[A-Z0-9]{4}-[A-Z0-9]{4,6})\s*(?:\(|$)`), Kind: adapter.EventCode, Once: true},
 					adapter.Rule{Pattern: regexp.MustCompile(`(?i)successfully logged in|logged in as`), Kind: adapter.EventSuccess, Once: true},
 					adapter.Rule{Pattern: regexp.MustCompile(`(?i)login failed|device code expired`), Kind: adapter.EventFailure, Once: true},
 				)

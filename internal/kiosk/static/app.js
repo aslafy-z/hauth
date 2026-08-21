@@ -483,6 +483,12 @@ function mountTerm(s, host) {
     cursorBlink: false,
     disableStdin: false,
     rows: 18,
+    // Open OSC 8 hyperlinks directly instead of xterm's confirm dialog.
+    linkHandler: {
+      activate: (e, uri) => {
+        if (/^https?:\/\//.test(uri)) window.open(uri, "_blank", "noopener");
+      },
+    },
   });
   const fit = new FitAddon.FitAddon();
   term.loadAddon(fit);
@@ -534,11 +540,16 @@ function connect() {
       case "status_changed":
         refreshSoon();
         break;
-      case "session_url":
-        session(ev.harness).id = ev.session_id;
-        session(ev.harness).url = ev.url;
+      case "session_url": {
+        const s = session(ev.harness);
+        s.id = ev.session_id;
+        // TUIs may print a truncated display URL while the full one comes
+        // from the escape sequence or the browser shim: prefer the longer
+        // of two URLs when one extends the other.
+        if (!s.url || !s.url.startsWith(ev.url)) s.url = ev.url;
         render();
         break;
+      }
       case "session_code":
         session(ev.harness).id = ev.session_id;
         session(ev.harness).code = ev.code;

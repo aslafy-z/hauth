@@ -54,3 +54,25 @@ func TestLineDetectorRuleSuppressesFallback(t *testing.T) {
 		t.Fatalf("unexpected events %+v", evs)
 	}
 }
+
+func TestFeedPartialSuppressesCaptures(t *testing.T) {
+	d := NewLineDetector(
+		Rule{Pattern: regexp.MustCompile(`(?P<url>https://\S+)`), Kind: EventURL, Once: true},
+		Rule{Pattern: regexp.MustCompile(`Press Enter to open`), Kind: EventPrompt, Once: true, Respond: "\r"},
+	)
+	// A partially rendered line must not fire (and permanently claim) the
+	// URL rule with a truncated capture.
+	if evs := d.FeedPartial("visit https://accounts.example.com/o/oauth2/auth?ac"); len(evs) != 0 {
+		t.Fatalf("partial line fired %v", evs)
+	}
+	evs := d.Feed("visit https://accounts.example.com/o/oauth2/auth?access_type=offline&client_id=x")
+	if len(evs) != 1 || evs[0].URL != "https://accounts.example.com/o/oauth2/auth?access_type=offline&client_id=x" {
+		t.Fatalf("complete line events = %v", evs)
+	}
+	// Respond rules do fire on partial lines: gates like gh's Enter prompt
+	// often render without a trailing newline.
+	evs = d.FeedPartial("! Press Enter to open github.com in your browser... ")
+	if len(evs) != 1 || evs[0].Respond != "\r" {
+		t.Fatalf("respond rule on partial = %v", evs)
+	}
+}

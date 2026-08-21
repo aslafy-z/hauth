@@ -42,9 +42,9 @@ func TestDeviceDetector(t *testing.T) {
 	for _, e := range evs {
 		switch e.Kind {
 		case adapter.EventURL:
-			url = e.URL == "https://auth.openai.com/activate"
+			url = e.URL == "https://auth.openai.com/codex/device"
 		case adapter.EventCode:
-			code = e.Code == "BDSF-KQRD"
+			code = e.Code == "4NEK-22H7V"
 		case adapter.EventSuccess:
 			success = true
 		}

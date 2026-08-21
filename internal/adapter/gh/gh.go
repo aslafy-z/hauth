@@ -50,7 +50,11 @@ func (g *ghAdapter) Methods() []adapter.Method {
 			Detect: func() adapter.Detector {
 				return adapter.NewLineDetector(
 					adapter.Rule{Pattern: regexp.MustCompile(`one-time code: (?P<code>[A-Z0-9]{4}-[A-Z0-9]{4})`), Kind: adapter.EventCode, Once: true},
-					adapter.Rule{Pattern: regexp.MustCompile(`Press Enter to open .* in your browser`), Kind: adapter.EventPrompt, Once: true},
+					// gh gates the device flow behind an Enter press;
+					// answer it so the flow proceeds without the user
+					// having to open the terminal (the "browser" it then
+					// opens is the session's shim).
+					adapter.Rule{Pattern: regexp.MustCompile(`Press Enter to open .* in your browser`), Kind: adapter.EventPrompt, Once: true, Respond: "\r"},
 					adapter.Rule{Pattern: regexp.MustCompile(`(?P<url>https://github\.com/login/device[^\s"']*)`), Kind: adapter.EventURL, Once: true},
 					adapter.Rule{Pattern: regexp.MustCompile(`Logged in as \S+`), Kind: adapter.EventSuccess, Once: true},
 					adapter.Rule{Pattern: regexp.MustCompile(`authorization request was denied|Authentication failed`), Kind: adapter.EventFailure, Once: true},

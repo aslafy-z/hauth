@@ -18,6 +18,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/aslafy-z/hauth/internal/adapter"
@@ -58,12 +59,12 @@ func (a *agyAdapter) Methods() []adapter.Method {
 			// URL is captured by the session's BROWSER shim.
 			Argv: []string{"agy"},
 			Detect: func() adapter.Detector {
-				return adapter.NewLineDetector(
+				return &tuiDetector{inner: adapter.NewLineDetector(
 					adapter.Rule{Pattern: regexp.MustCompile(`(?i)not signed in`), Kind: adapter.EventPrompt, Once: true},
 					adapter.Rule{Pattern: regexp.MustCompile(`(?i)(?:visit|open|go to).*(?P<url>https://\S+)`), Kind: adapter.EventURL, Once: true},
 					adapter.Rule{Pattern: regexp.MustCompile(`(?i)authentication successful|signed in as|login successful`), Kind: adapter.EventSuccess, Once: true},
 					adapter.Rule{Pattern: regexp.MustCompile(`(?i)authentication failed or timed out|login failed`), Kind: adapter.EventFailure, Once: true},
-				)
+				)}
 			},
 			Input:        adapter.InputFreeText,
 			Timeout:      15 * time.Minute,
@@ -76,7 +77,29 @@ var (
 	reAuthEmail   = regexp.MustCompile(`applyAuthResult: email=([^,\s]+)`)
 	reNotLoggedIn = regexp.MustCompile(`You are not logged into Antigravity`)
 	reViaKeyring  = regexp.MustCompile(`authenticated via keyring`)
+	reHeaderEmail = regexp.MustCompile(`[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}`)
 )
+
+// tuiDetector wraps the rule detector with one signal rules cannot express
+// (RE2 has no lookahead): once signed in, the TUI header shows the account
+// email. An email on a line that is not a URL counts as success.
+type tuiDetector struct {
+	inner    *adapter.LineDetector
+	sawEmail bool
+}
+
+func (d *tuiDetector) Feed(line string) []adapter.Event {
+	evs := d.inner.Feed(line)
+	if !d.sawEmail && !strings.Contains(line, "://") && reHeaderEmail.MatchString(line) {
+		d.sawEmail = true
+		evs = append(evs, adapter.Event{Kind: adapter.EventSuccess, Prompt: line})
+	}
+	return evs
+}
+
+func (d *tuiDetector) FeedPartial(line string) []adapter.Event {
+	return d.inner.FeedPartial(line)
+}
 
 // parseAuthLog classifies a CLI log capture. account is empty when the log
 // shows no authenticated identity.

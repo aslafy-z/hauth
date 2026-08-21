@@ -25,6 +25,9 @@ type Event struct {
 	URL    string
 	Code   string
 	Prompt string
+	// Respond is input the session should write to the pty when this
+	// event fires (e.g. the Enter gh demands before "opening" a browser).
+	Respond string
 }
 
 // Detector consumes CLI output line by line and emits events. Detectors are
@@ -42,6 +45,9 @@ type Rule struct {
 	Kind    EventKind
 	// Once suppresses repeat emissions for spinner-redrawn lines.
 	Once bool
+	// Respond is written to the pty when the rule matches, answering
+	// gates like "Press Enter to continue" without the user.
+	Respond string
 }
 
 // LineDetector applies ordered rules to each line. A generic URL fallback is
@@ -61,12 +67,27 @@ func NewLineDetector(rules ...Rule) *LineDetector {
 }
 
 func (d *LineDetector) Feed(line string) []Event {
+	return d.feed(line, false)
+}
+
+// FeedPartial runs prompt and auto-respond rules against an incomplete
+// line. URL, code, and outcome rules never fire here: a partial line can
+// truncate their captures, and a Once rule that fired on a fragment would
+// suppress the complete match forever.
+func (d *LineDetector) FeedPartial(line string) []Event {
+	return d.feed(line, true)
+}
+
+func (d *LineDetector) feed(line string, partial bool) []Event {
 	if d.fired == nil {
 		d.fired = map[int]bool{}
 	}
 	var events []Event
 	matched := false
 	for i, r := range d.Rules {
+		if partial && r.Kind != EventPrompt && r.Respond == "" {
+			continue
+		}
 		m := r.Pattern.FindStringSubmatch(line)
 		if m == nil {
 			continue
@@ -76,7 +97,7 @@ func (d *LineDetector) Feed(line string) []Event {
 			continue
 		}
 		d.fired[i] = true
-		ev := Event{Kind: r.Kind, Prompt: line}
+		ev := Event{Kind: r.Kind, Prompt: line, Respond: r.Respond}
 		for j, name := range r.Pattern.SubexpNames() {
 			switch name {
 			case "url":
@@ -87,7 +108,7 @@ func (d *LineDetector) Feed(line string) []Event {
 		}
 		events = append(events, ev)
 	}
-	if !matched && !d.NoURLFallback {
+	if !partial && !matched && !d.NoURLFallback {
 		if m := genericURL.FindStringSubmatch(line); m != nil && !d.fired[-1] {
 			d.fired[-1] = true
 			events = append(events, Event{Kind: EventURL, URL: m[1], Prompt: line})

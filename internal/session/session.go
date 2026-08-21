@@ -9,6 +9,8 @@ import (
 	"errors"
 	"os"
 	"os/exec"
+	"regexp"
+	"strings"
 	"sync"
 	"time"
 
@@ -60,6 +62,7 @@ type Session struct {
 	redactor *StreamRedactor
 	detector adapter.Detector
 	lineBuf  []byte
+	osc8Buf  []byte
 
 	mu       sync.Mutex
 	state    State
@@ -142,7 +145,10 @@ func Start(ctx context.Context, harness string, m adapter.Method, opts Options) 
 	cmd := exec.Command(m.Argv[0], m.Argv[1:]...)
 	cmd.Dir = m.Cwd
 	cmd.Env = env
-	ptmx, err := pty.StartWithSize(cmd, &pty.Winsize{Rows: 24, Cols: 80})
+	// Wide by default: narrow ptys make TUIs hard-wrap long OAuth URLs,
+	// which line-based detection then truncates. The kiosk terminal sends
+	// its real size when someone actually attaches.
+	ptmx, err := pty.StartWithSize(cmd, &pty.Winsize{Rows: 50, Cols: 240})
 	if err != nil {
 		shim.Close()
 		return nil, err
@@ -315,7 +321,27 @@ func (s *Session) deliver(out []byte) {
 // fed provisionally (without being consumed) so prompts that never end in a
 // newline, like "Paste code: ", are still detected; detector rules use Once
 // to stay idempotent under re-feeding.
+// osc8URI matches a complete OSC 8 hyperlink open sequence. TUIs often
+// render a shortened label linked to the full URI, so the escape sequence
+// is the only place the real URL exists.
+var osc8URI = regexp.MustCompile(`\x1b\]8;[^;\x07\x1b]*;([^\x07\x1b]+)(?:\x07|\x1b\\)`)
+
 func (s *Session) consumeDetect(p []byte) {
+	s.osc8Buf = append(s.osc8Buf, p...)
+	for _, m := range osc8URI.FindAllSubmatch(s.osc8Buf, -1) {
+		uri := string(m[1])
+		if strings.HasPrefix(uri, "http://") || strings.HasPrefix(uri, "https://") {
+			s.handleEvent(adapter.Event{Kind: adapter.EventURL, URL: uri})
+		}
+	}
+	if idx := bytes.LastIndexByte(s.osc8Buf, 0x1b); idx > 0 {
+		// Keep only a possible unterminated trailing sequence.
+		s.osc8Buf = append(s.osc8Buf[:0], s.osc8Buf[idx:]...)
+	}
+	if len(s.osc8Buf) > maxLineBuf {
+		s.osc8Buf = s.osc8Buf[len(s.osc8Buf)-maxLineBuf:]
+	}
+
 	s.lineBuf = append(s.lineBuf, p...)
 	for {
 		i := bytes.IndexAny(s.lineBuf, "\r\n")
@@ -328,19 +354,35 @@ func (s *Session) consumeDetect(p []byte) {
 			j++
 		}
 		s.lineBuf = s.lineBuf[j:]
-		s.feedLine(line)
+		s.feedLine(line, false)
 	}
 	if len(s.lineBuf) > maxLineBuf {
 		s.lineBuf = s.lineBuf[len(s.lineBuf)-maxLineBuf:]
 	}
 	if len(s.lineBuf) > 0 {
-		s.feedLine(string(s.lineBuf))
+		s.feedLine(string(s.lineBuf), true)
 	}
 }
 
-func (s *Session) feedLine(line string) {
+// partialFeeder lets a detector handle incomplete lines safely; detectors
+// without it only ever see complete lines.
+type partialFeeder interface {
+	FeedPartial(line string) []adapter.Event
+}
+
+func (s *Session) feedLine(line string, partial bool) {
 	clean := StripANSI(line)
 	if len(bytes.TrimSpace([]byte(clean))) == 0 {
+		return
+	}
+	if partial {
+		pf, ok := s.detector.(partialFeeder)
+		if !ok {
+			return
+		}
+		for _, ev := range pf.FeedPartial(clean) {
+			s.handleEvent(ev)
+		}
 		return
 	}
 	for _, ev := range s.detector.Feed(clean) {
@@ -371,6 +413,13 @@ func (s *Session) handleEvent(ev adapter.Event) {
 	}
 	cb := s.onEvent
 	s.mu.Unlock()
+	if ev.Respond != "" {
+		// A rule answered a gate itself (e.g. gh's "Press Enter to open").
+		_ = s.Write(ev.Respond)
+		if ev.Kind == adapter.EventPrompt {
+			return // auto-answered; nothing for the user to do
+		}
+	}
 	ev.Prompt = string(Redact([]byte(ev.Prompt)))
 	if cb != nil {
 		cb(ev)

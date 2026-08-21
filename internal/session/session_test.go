@@ -203,3 +203,37 @@ func TestSessionSubscribeReplaysRing(t *testing.T) {
 		t.Fatalf("late subscriber missed ring: %q", got)
 	}
 }
+
+// The full URL of a TUI hyperlink lives only in the OSC 8 escape sequence;
+// the visible text is often shortened. The session must surface the URI
+// from the sequence itself.
+func TestSessionOSC8URLExtraction(t *testing.T) {
+	long := "https://accounts.example.com/o/oauth2/auth?access_type=offline&client_id=1071060605910-abcdef.apps.example.com&code_challenge=xyz"
+	script := "printf '\\033]8;;" + long + "\\033\\\\Open this link\\033]8;;\\033\\\\ \\n'; sleep 0.3"
+	m := adapter.Method{ID: "osc8", Argv: []string{"sh", "-c", script}}
+	var mu sync.Mutex
+	var got []string
+	s, err := session.Start(context.Background(), "fake", m, session.Options{
+		Home:     t.TempDir(),
+		StateDir: t.TempDir(),
+		OnEvent: func(e adapter.Event) {
+			if e.Kind == adapter.EventURL {
+				mu.Lock()
+				got = append(got, e.URL)
+				mu.Unlock()
+			}
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	<-s.Done()
+	mu.Lock()
+	defer mu.Unlock()
+	for _, u := range got {
+		if u == long {
+			return
+		}
+	}
+	t.Fatalf("OSC 8 URI not extracted; got %v", got)
+}
