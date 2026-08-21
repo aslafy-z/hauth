@@ -1,0 +1,47 @@
+FROM jdxcode/mise:latest AS mise
+
+FROM golang:1.26-alpine AS build
+
+ARG VERSION=dev
+ARG COMMIT=none
+ARG DATE=unknown
+
+WORKDIR /src
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+RUN CGO_ENABLED=0 go build \
+  -ldflags "-s -w \
+    -X github.com/aslafy-z/hauth/internal/version.Version=${VERSION} \
+    -X github.com/aslafy-z/hauth/internal/version.Commit=${COMMIT} \
+    -X github.com/aslafy-z/hauth/internal/version.Date=${DATE}" \
+  -o /out/hauth ./cmd/hauth
+
+FROM codercom/enterprise-base:ubuntu
+
+USER root
+RUN apt-get update \
+  && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    bash \
+    ca-certificates \
+    curl \
+    git \
+    gnupg \
+    gzip \
+    tar \
+    unzip \
+    xz-utils \
+  && rm -rf /var/lib/apt/lists/*
+
+COPY --from=mise /usr/local/bin/mise /usr/local/bin/mise
+COPY --from=build /out/hauth /usr/local/bin/hauth
+COPY deploy/docker/hapi/start-hapi.sh /opt/hauth/start-hapi.sh
+RUN chmod +x /opt/hauth/start-hapi.sh
+
+ENV PATH="/home/coder/.local/bin:/home/coder/.local/share/mise/shims:${PATH}"
+
+USER coder
+RUN mkdir -p /home/coder/project /home/coder/.local/bin /home/coder/.hapi
+WORKDIR /home/coder/project
