@@ -70,10 +70,11 @@ func (d *LineDetector) Feed(line string) []Event {
 	return d.feed(line, false)
 }
 
-// FeedPartial runs prompt and auto-respond rules against an incomplete
-// line. URL, code, and outcome rules never fire here: a partial line can
-// truncate their captures, and a Once rule that fired on a fragment would
-// suppress the complete match forever.
+// FeedPartial runs against an incomplete line. Capture rules (URL, code)
+// never fire here: a partial line can truncate their captures, and a Once
+// rule that fired on a fragment would suppress the complete match forever.
+// Everything else (prompts, outcomes, auto-responses) must fire: TUIs
+// redraw in place and their lines often never terminate in a newline.
 func (d *LineDetector) FeedPartial(line string) []Event {
 	return d.feed(line, true)
 }
@@ -85,7 +86,7 @@ func (d *LineDetector) feed(line string, partial bool) []Event {
 	var events []Event
 	matched := false
 	for i, r := range d.Rules {
-		if partial && r.Kind != EventPrompt && r.Respond == "" {
+		if partial && (r.Kind == EventURL || r.Kind == EventCode) {
 			continue
 		}
 		m := r.Pattern.FindStringSubmatch(line)

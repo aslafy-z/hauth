@@ -76,3 +76,15 @@ func TestFeedPartialSuppressesCaptures(t *testing.T) {
 		t.Fatalf("respond rule on partial = %v", evs)
 	}
 }
+
+// TUI-rendered lines never complete with a newline; outcome rules must
+// still fire on partial lines (only capture rules are held back).
+func TestFeedPartialFiresOutcomes(t *testing.T) {
+	d := NewLineDetector(
+		Rule{Pattern: regexp.MustCompile(`(?i)login successful`), Kind: EventSuccess, Once: true},
+	)
+	evs := d.FeedPartial("Login successful. Press Enter to continue\u2026")
+	if len(evs) != 1 || evs[0].Kind != EventSuccess {
+		t.Fatalf("success on partial line = %v", evs)
+	}
+}

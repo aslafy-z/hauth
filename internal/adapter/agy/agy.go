@@ -89,16 +89,21 @@ type tuiDetector struct {
 }
 
 func (d *tuiDetector) Feed(line string) []adapter.Event {
-	evs := d.inner.Feed(line)
+	return d.withEmail(line, d.inner.Feed(line))
+}
+
+// The TUI redraws in place, so its lines rarely terminate: the email
+// signal must fire on partial lines too.
+func (d *tuiDetector) FeedPartial(line string) []adapter.Event {
+	return d.withEmail(line, d.inner.FeedPartial(line))
+}
+
+func (d *tuiDetector) withEmail(line string, evs []adapter.Event) []adapter.Event {
 	if !d.sawEmail && !strings.Contains(line, "://") && reHeaderEmail.MatchString(line) {
 		d.sawEmail = true
 		evs = append(evs, adapter.Event{Kind: adapter.EventSuccess, Prompt: line})
 	}
 	return evs
-}
-
-func (d *tuiDetector) FeedPartial(line string) []adapter.Event {
-	return d.inner.FeedPartial(line)
 }
 
 // parseAuthLog classifies a CLI log capture. account is empty when the log
