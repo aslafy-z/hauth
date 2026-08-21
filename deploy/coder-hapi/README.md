@@ -17,7 +17,7 @@ Two equivalent paths:
 - Download `hauth-coder-hapi-template.zip` from the [latest release](https://github.com/aslafy-z/hauth/releases/latest) and upload it in the Coder dashboard under Templates, Create template.
 - Or push this directory with the CLI: `coder templates push hauth-hapi -d deploy/coder-hapi`.
 
-Set the template variables (at least `namespace`) when prompted.
+Review the template variables when prompted; `namespace` defaults to `coder-workspaces`.
 
 ## Prerequisites
 
@@ -56,7 +56,7 @@ hauth keeps credential bundles under `/home/coder/.local/share/hauth/store` on t
 | Agent harness | `all` | which harness CLIs `hauth install` sets up at startup; `none` skips HAPI and hauth |
 | HAPI CLI API token | `token` | passed to HAPI as `CLI_API_TOKEN`; change it for shared or sensitive environments |
 
-Template variables: `namespace` (required), `use_kubeconfig`, `workspace_apps_domain`, `enable_github_external_auth`, `github_external_auth_id`.
+Template variables: `namespace` (default `coder-workspaces`), `use_kubeconfig`, `workspace_apps_domain`, `enable_github_external_auth`, `github_external_auth_id`.
 
 ## GitHub external auth
 
