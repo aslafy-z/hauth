@@ -1,0 +1,157 @@
+:root {
+  --bg: #0b1220;
+  --card: #131c2e;
+  --card-edge: #1f2c45;
+  --text: #e2e8f0;
+  --muted: #8fa1bb;
+  --accent: #60a5fa;
+  --ok: #34d399;
+  --bad: #f87171;
+  --unknown: #64748b;
+  --danger: #b91c1c;
+  font-size: 16px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.9rem 1rem 0.4rem;
+  max-width: 42rem;
+  margin: 0 auto;
+}
+
+h1 { font-size: 1.15rem; margin: 0; letter-spacing: 0.03em; }
+
+.conn { width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--unknown); }
+.conn.live { background: var(--ok); }
+
+main {
+  max-width: 42rem;
+  margin: 0 auto;
+  padding: 0.5rem 1rem 3rem;
+  display: grid;
+  gap: 0.8rem;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--card-edge);
+  border-radius: 0.8rem;
+  padding: 0.9rem 1rem;
+}
+
+.card-head { display: flex; align-items: center; gap: 0.55rem; }
+.card-head .name { font-size: 1rem; margin: 0; font-family: ui-monospace, monospace; }
+
+.dot { width: 0.6rem; height: 0.6rem; border-radius: 50%; background: var(--unknown); flex: none; }
+.dot.valid { background: var(--ok); }
+.dot.invalid { background: var(--bad); }
+
+.badge {
+  margin-left: auto;
+  font-size: 0.72rem;
+  color: var(--muted);
+  border: 1px solid var(--card-edge);
+  border-radius: 1rem;
+  padding: 0.15rem 0.55rem;
+  white-space: nowrap;
+}
+.badge.store { color: var(--ok); border-color: var(--ok); }
+.badge.env, .badge.file-external { color: var(--accent); border-color: var(--accent); }
+
+.detail, .account, .lease { margin: 0.35rem 0 0; font-size: 0.82rem; color: var(--muted); }
+.account:empty, .lease:empty, .detail:empty { display: none; }
+.lease { color: var(--accent); }
+
+.actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.7rem; }
+.actions:empty { display: none; }
+
+button {
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--text);
+  background: #1c2a44;
+  border: 1px solid var(--card-edge);
+  border-radius: 0.55rem;
+  padding: 0.5rem 0.9rem;
+  cursor: pointer;
+  min-height: 2.5rem;
+}
+button:hover { border-color: var(--accent); }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button:disabled { opacity: 0.45; cursor: not-allowed; }
+button.primary { background: var(--accent); color: #0b1220; font-weight: 600; }
+button.danger { border-color: var(--danger); color: #fca5a5; background: transparent; }
+
+.note { flex-basis: 100%; font-size: 0.75rem; color: var(--muted); margin: 0; }
+
+.session {
+  margin-top: 0.8rem;
+  border-top: 1px dashed var(--card-edge);
+  padding-top: 0.8rem;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.session-state { font-size: 0.78rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+
+.url {
+  color: var(--accent);
+  font-size: 0.85rem;
+  word-break: break-all;
+  text-decoration: underline;
+}
+.url:empty { display: none; }
+
+.chip {
+  font-family: ui-monospace, monospace;
+  font-size: 1.5rem;
+  letter-spacing: 0.18em;
+  text-align: center;
+  padding: 0.7rem;
+  background: #0e1626;
+  border: 1px solid var(--accent);
+  color: var(--text);
+}
+.chip:empty { display: none; }
+.chip.copied::after { content: " copied"; font-size: 0.7rem; letter-spacing: normal; color: var(--ok); }
+
+.prompt { margin: 0; font-size: 0.82rem; color: var(--muted); font-family: ui-monospace, monospace; }
+.prompt:empty { display: none; }
+
+.input-row { display: flex; gap: 0.5rem; }
+.input-row input {
+  flex: 1;
+  font: inherit;
+  font-family: ui-monospace, monospace;
+  background: #0e1626;
+  color: var(--text);
+  border: 1px solid var(--card-edge);
+  border-radius: 0.55rem;
+  padding: 0.55rem 0.7rem;
+  min-width: 0;
+}
+.input-row input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.session-buttons { display: flex; gap: 0.5rem; }
+
+.term {
+  border: 1px solid var(--card-edge);
+  border-radius: 0.55rem;
+  padding: 0.4rem;
+  background: #000;
+  min-height: 14rem;
+}
+
+.empty { color: var(--muted); text-align: center; padding: 2rem 0; }
