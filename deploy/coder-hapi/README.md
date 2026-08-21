@@ -8,7 +8,7 @@ tags: [kubernetes, hapi, hauth, ai, agents]
 
 # Coder HAPI + hauth Workspace Template
 
-This template provisions a Kubernetes pod as a Coder workspace with a persistent home volume, a per-workspace [HAPI](https://hapi.run) hub and runner, and [hauth](https://github.com/aslafy-z/hauth) as the authentication companion for the AI agent harness CLIs. It is the hauth-based successor of [coder-template-hapi](https://github.com/aslafy-z/coder-template-hapi): the Python Agent Auth Companion is replaced by the `hauth agent`, which adds credential persistence across workspaces on top of the login brokering.
+This template provisions a Kubernetes pod as a Coder workspace with a persistent home volume, a per-workspace [HAPI](https://hapi.run) hub and runner, and [hauth](https://github.com/aslafy-z/hauth) as the authentication companion for the AI agent harness CLIs: browser-free login brokering plus credential persistence across workspaces.
 
 ## Prerequisites
 
@@ -26,11 +26,11 @@ Workspace creation creates a persistent volume claim for `/home/coder` and a Kub
 
 At startup, `/opt/hauth/start-hapi.sh` (baked into the image) installs the selected harness CLIs through the user's global `mise` config, starts `hauth agent` on `127.0.0.1:43117`, starts the HAPI hub on `127.0.0.1:3006`, and starts a HAPI runner rooted at `/home/coder/project`. The hauth agent restores stored credentials before the harnesses are first used, watches for changes, and pushes them back to the credential store.
 
-## hauth: what replaces the Agent Auth Companion
+## The Agent Auth app
 
 The **Agent Auth** app is the hauth kiosk: a mobile-friendly loopback UI showing the authentication state of `gh`, `claude`, `codex`, `opencode`, and `agy`, with one button per browser-free login method. URLs and one-time codes are tap-to-copy; paste-code flows have an input field; a terminal panel is available but hidden by default.
 
-Unlike the Python companion, hauth also persists credentials: after a login, the credential files are bundled and written to a per-user store, and any other workspace of the same user restores them at start. Tokens injected by the platform (for example `GH_TOKEN` from external auth) or logins done by hand are reported as "managed externally" and never touched.
+hauth also persists credentials: after a login, the credential files are bundled and written to a per-user store, and any other workspace of the same user restores them at start. Tokens injected by the platform (for example `GH_TOKEN` from external auth) or logins done by hand are reported as "managed externally" and never touched.
 
 The kiosk has no authentication of its own. The Coder app is `share = "owner"`; that owner-only sharing is the access control.
 

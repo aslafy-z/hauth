@@ -155,7 +155,7 @@ Select with `--store` or `HAUTH_STORE`. Identity comes from `HAUTH_USER` and `HA
 
 ## HAPI workspace image
 
-`ghcr.io/aslafy-z/hauth-hapi` is a ready-made Coder workspace image that bundles hauth with [mise](https://mise.jdx.dev) and a startup script that installs [HAPI](https://hapi.run) plus the selected harness CLIs, starts `hauth agent` on `127.0.0.1:43117`, and starts the HAPI hub and runner. It is a drop-in image for templates derived from [coder-template-hapi](https://github.com/aslafy-z/coder-template-hapi), replacing its Python auth companion with hauth, and the default image of the [deploy/coder-hapi](deploy/coder-hapi) template.
+`ghcr.io/aslafy-z/hauth-hapi` is a ready-made Coder workspace image that bundles hauth with [mise](https://mise.jdx.dev) and a startup script that installs [HAPI](https://hapi.run) plus the selected harness CLIs, starts `hauth agent` on `127.0.0.1:43117`, and starts the HAPI hub and runner. It is the default image of the [deploy/coder-hapi](deploy/coder-hapi) template.
 
 ## Security model
 

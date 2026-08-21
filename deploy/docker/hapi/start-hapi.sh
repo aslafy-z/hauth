@@ -13,10 +13,10 @@ MISE_GLOBAL_CONFIG_DIR="${MISE_GLOBAL_CONFIG_DIR:-${HOME}/.config/mise}"
 MISE_CONFIG_FILE="${MISE_CONFIG_FILE:-${MISE_GLOBAL_CONFIG_DIR}/config.toml}"
 HAPI_HOST="${HAPI_HOST:-127.0.0.1}"
 HAPI_PORT="${HAPI_PORT:-3006}"
-AUTHD_HOST="${AUTHD_HOST:-127.0.0.1}"
-AUTHD_PORT="${AUTHD_PORT:-43117}"
+HAUTH_HOST="${HAUTH_HOST:-127.0.0.1}"
+HAUTH_PORT="${HAUTH_PORT:-43117}"
 HAUTH_BIN="${HAUTH_BIN:-/usr/local/bin/hauth}"
-HAUTH_LISTEN="${HAUTH_LISTEN:-${AUTHD_HOST}:${AUTHD_PORT}}"
+HAUTH_LISTEN="${HAUTH_LISTEN:-${HAUTH_HOST}:${HAUTH_PORT}}"
 CLI_API_TOKEN="${CLI_API_TOKEN:-token}"
 
 export HOME PROJECT_DIR HAPI_HOME MISE_CONFIG_FILE CLI_API_TOKEN HAUTH_LISTEN
@@ -200,7 +200,7 @@ hauth_agent_pids() {
 }
 
 start_hauth_agent() {
-  if curl -fsS "http://${AUTHD_HOST}:${AUTHD_PORT}/healthz" >/dev/null 2>&1; then
+  if curl -fsS "http://${HAUTH_HOST}:${HAUTH_PORT}/healthz" >/dev/null 2>&1; then
     echo "hauth agent already running and healthy"
     return 0
   fi
@@ -231,7 +231,7 @@ start_hauth_agent() {
   local hauth_pid="$!"
 
   for _ in $(seq 1 30); do
-    if curl -fsS "http://${AUTHD_HOST}:${AUTHD_PORT}/healthz" >/dev/null 2>&1; then
+    if curl -fsS "http://${HAUTH_HOST}:${HAUTH_PORT}/healthz" >/dev/null 2>&1; then
       echo "hauth agent is ready"
       return 0
     fi

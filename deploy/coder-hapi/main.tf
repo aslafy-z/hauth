@@ -275,7 +275,7 @@ resource "coder_script" "hapi" {
   start_blocks_login = false
 }
 
-resource "coder_app" "auth_companion" {
+resource "coder_app" "agent_auth" {
   count        = data.coder_parameter.agent_harness.value == "none" ? 0 : 1
   agent_id     = coder_agent.main.id
   slug         = "auth"
