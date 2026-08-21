@@ -1,0 +1,54 @@
+# RBAC for the hauth k8s store backend.
+#
+# Kubernetes cannot restrict the `create` verb by resource name (the name is
+# not known at authorization time). Two workable setups:
+#
+#   1. Recommended: pre-create one empty Secret per user
+#      (harness-creds-<user>) out of band, then grant only get/update/delete
+#      with resourceNames, as below. hauth updates the existing Secret and
+#      never needs create.
+#   2. Simpler but broader: drop resourceNames and also grant create,
+#      accepting that the ServiceAccount can touch any Secret in the
+#      namespace. Only acceptable in a dedicated store namespace.
+#
+# The example below is setup 1 for a single user "alice". Generate one
+# Role/RoleBinding pair per user (or per workspace ServiceAccount) from your
+# template automation.
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: hauth-workspace-alice
+  namespace: coder-workspaces
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: harness-creds-alice
+  namespace: coder-workspaces
+type: Opaque
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: hauth-store-alice
+  namespace: coder-workspaces
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["harness-creds-alice"]
+    verbs: ["get", "update", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: hauth-store-alice
+  namespace: coder-workspaces
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: hauth-store-alice
+subjects:
+  - kind: ServiceAccount
+    name: hauth-workspace-alice
+    namespace: coder-workspaces
