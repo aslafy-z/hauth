@@ -1,0 +1,6 @@
+[1m┌  Add credential[0m
+│  Select provider
+│  Anthropic
+│  Console API key: create an api key at https://console.anthropic.com/settings/keys
+│  Paste your API key
+└  Done
