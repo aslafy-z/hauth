@@ -120,3 +120,23 @@ func TestExpensiveProbe(t *testing.T) {
 		t.Fatalf("anon: valid=%v source=%v", st.Valid, st.Source)
 	}
 }
+
+func TestAgyOnboardingGatesAutoAnswered(t *testing.T) {
+	a := New(common.Config{Home: t.TempDir(), StateDir: t.TempDir()})
+	d := a.Methods()[0].Detect()
+	for _, line := range []string{
+		"Choose your color scheme:",
+		"Select login method:",
+		"Do you trust the contents of this project?",
+	} {
+		found := false
+		for _, ev := range d.Feed(line) {
+			if ev.Respond == "\r" {
+				found = true
+			}
+		}
+		if !found {
+			t.Fatalf("gate %q not auto-answered", line)
+		}
+	}
+}

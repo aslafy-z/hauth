@@ -61,6 +61,12 @@ func (a *agyAdapter) Methods() []adapter.Method {
 			Detect: func() adapter.Detector {
 				return &tuiDetector{inner: adapter.NewLineDetector(
 					adapter.Rule{Pattern: regexp.MustCompile(`(?i)not signed in`), Kind: adapter.EventPrompt, Once: true},
+					// Onboarding gates answered with their defaults:
+					// color scheme, login method (Google OAuth is
+					// preselected), workspace trust.
+					adapter.Rule{Pattern: regexp.MustCompile(`(?i)choose your color scheme`), Kind: adapter.EventPrompt, Once: true, Respond: "\r"},
+					adapter.Rule{Pattern: regexp.MustCompile(`(?i)select login method`), Kind: adapter.EventPrompt, Once: true, Respond: "\r"},
+					adapter.Rule{Pattern: regexp.MustCompile(`(?i)do you trust the contents|trust this folder`), Kind: adapter.EventPrompt, Once: true, Respond: "\r"},
 					adapter.Rule{Pattern: regexp.MustCompile(`(?i)(?:visit|open|go to).*(?P<url>https://\S+)`), Kind: adapter.EventURL, Once: true},
 					adapter.Rule{Pattern: regexp.MustCompile(`(?i)authentication successful|signed in as|login successful`), Kind: adapter.EventSuccess, Once: true},
 					adapter.Rule{Pattern: regexp.MustCompile(`(?i)authentication failed or timed out|login failed`), Kind: adapter.EventFailure, Once: true},

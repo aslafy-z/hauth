@@ -116,3 +116,23 @@ func TestFilterPassesCredentialsThrough(t *testing.T) {
 		t.Fatal("credentials file must pass through unchanged")
 	}
 }
+
+func TestOnboardingGatesAutoAnswered(t *testing.T) {
+	d := pasteDetector()
+	gates := []string{
+		"Choose the text style that looks best with your terminal:",
+		"Select login method:",
+		"Press Enter to continue…",
+		"Do you trust the files in this folder?",
+	}
+	for _, line := range gates {
+		evs := d.Feed(line)
+		if len(evs) != 1 || evs[0].Respond != "\r" {
+			t.Fatalf("gate %q not auto-answered: %v", line, evs)
+		}
+	}
+	// Redraws must not re-answer.
+	if evs := d.Feed("Select login method:"); len(evs) != 0 {
+		t.Fatalf("gate re-answered on redraw: %v", evs)
+	}
+}

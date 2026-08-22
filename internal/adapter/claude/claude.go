@@ -61,6 +61,14 @@ func pasteDetector() adapter.Detector {
 		adapter.Rule{Pattern: regexp.MustCompile(`(?i)paste code`), Kind: adapter.EventPrompt, Once: true},
 		adapter.Rule{Pattern: regexp.MustCompile(`(?i)login successful|logged in`), Kind: adapter.EventSuccess, Once: true},
 		adapter.Rule{Pattern: regexp.MustCompile(`(?i)invalid code|login failed|unable to log ?in`), Kind: adapter.EventFailure, Once: true},
+		// First-run onboarding gates, each accepted with its default so
+		// nobody has to navigate the TUI by hand: theme picker, login
+		// method (subscription account is preselected; the token method
+		// exists for console accounts), security notes, folder trust.
+		adapter.Rule{Pattern: regexp.MustCompile(`(?i)choose (your|the) (color scheme|text style)`), Kind: adapter.EventPrompt, Once: true, Respond: "\r"},
+		adapter.Rule{Pattern: regexp.MustCompile(`(?i)select login method`), Kind: adapter.EventPrompt, Once: true, Respond: "\r"},
+		adapter.Rule{Pattern: regexp.MustCompile(`(?i)press enter to continue`), Kind: adapter.EventPrompt, Once: true, Respond: "\r"},
+		adapter.Rule{Pattern: regexp.MustCompile(`(?i)do you trust|trust this folder`), Kind: adapter.EventPrompt, Once: true, Respond: "\r"},
 	)
 }
 
