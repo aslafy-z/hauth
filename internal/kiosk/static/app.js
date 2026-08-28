@@ -49,10 +49,43 @@ function refreshSoon() {
 async function refreshStatus() {
   try {
     const res = await fetch("/api/status");
-    state.statuses = (await res.json()) || [];
-    seedSessions();
-    render();
+    liveStatuses(await res.json());
   } catch { /* stream reconnect will retry */ }
+}
+
+// The last statuses persist locally so a reload paints the previous state
+// instantly (marked refreshing) instead of a blank list until the stream
+// snapshot lands.
+const STATUS_CACHE_KEY = "hauth.statuses";
+
+function loadCachedStatuses() {
+  try {
+    const cached = JSON.parse(localStorage.getItem(STATUS_CACHE_KEY) || "null");
+    if (!Array.isArray(cached) || !cached.length) return;
+    // Display only: session state is seeded from live data, never cache.
+    state.statuses = cached.map((h) => ({ ...h, session_id: "", session_state: "" }));
+    connEl.classList.add("refreshing");
+    render();
+  } catch { /* corrupt or blocked storage */ }
+}
+
+function liveStatuses(list) {
+  state.statuses = list || [];
+  connEl.classList.remove("refreshing");
+  try { localStorage.setItem(STATUS_CACHE_KEY, JSON.stringify(state.statuses)); } catch { /* full or blocked */ }
+  seedSessions();
+  render();
+  checkAllOnLoad();
+}
+
+// One fan-out per page load: bring every expensive-to-check harness's
+// validity up to date instead of waiting for its sheet to be opened. The
+// server serves recent results from cache, so reloads stay cheap.
+let checkedOnLoad = false;
+function checkAllOnLoad() {
+  if (checkedOnLoad) return;
+  checkedOnLoad = true;
+  for (const h of state.statuses) autoCheck(h);
 }
 
 function view(name) {
@@ -76,6 +109,7 @@ function sourceWording(h) {
 function shortState(h) {
   const s = state.sessions[h.name];
   if (s && s.state === "running") return "logging in…";
+  if (state.checking[h.name]) return "checking…";
   if (h.source === "none") return h.installed === false ? "not installed" : "not logged in";
   const src = { env: "env", "file-external": "external", store: "synced" }[h.source] || h.source;
   const val = { valid: "valid", invalid: "invalid" }[h.validity];
@@ -257,7 +291,7 @@ function renderDetail(h) {
   }
   if (h.check_is_expensive && !state.checking[h.name]) {
     actions.append(actionBtn("Re-check", "", async () => {
-      await api(`/api/harness/${h.name}/check`);
+      await api(`/api/harness/${h.name}/check?force=1`);
       await refreshStatus();
     }));
   }
@@ -418,15 +452,30 @@ function renderFlow(h, s) {
   }
   sheetBody.append(tools);
 
+  // On wide screens the terminal docks into the empty main area instead
+  // of the narrow sheet: TUIs get real columns (the pty is resized to the
+  // attached terminal), and the sheet keeps the steps.
+  const docked = state.termOpen && dockMedia.matches;
+  document.body.classList.toggle("term-docked", docked);
+  termPanel.hidden = !docked;
   const termHost = el("div", "term");
   termHost.id = "term-host";
-  termHost.hidden = !state.termOpen;
+  termHost.hidden = !state.termOpen || docked;
   sheetBody.append(termHost);
-  if (state.termOpen) {
+  if (docked) {
+    termPanel.textContent = "";
+    const host = el("div", "term");
+    termPanel.append(host);
+    mountTerm(s, host);
+  } else if (state.termOpen) {
     sheetBody.append(keybar());
     mountTerm(s, termHost);
   }
 }
+
+const termPanel = $("#term-panel");
+const dockMedia = window.matchMedia("(min-width: 1000px)");
+dockMedia.addEventListener("change", () => render());
 
 /* ---------- terminal ---------- */
 
@@ -469,6 +518,8 @@ function toggleTerm(force) {
 function mountTerm(s, host) {
   if (state.term && state.term.sid === s.id) {
     host.append(state.term.el);
+    state.term.ro.disconnect();
+    state.term.ro.observe(host);
     state.term.fit.fit();
     return;
   }
@@ -524,6 +575,9 @@ function teardownTerm() {
 function closeTerm() {
   teardownTerm();
   state.termOpen = false;
+  document.body.classList.remove("term-docked");
+  termPanel.hidden = true;
+  termPanel.textContent = "";
 }
 
 /* ---------- events ---------- */
@@ -541,9 +595,7 @@ function connect() {
     try { ev = JSON.parse(e.data); } catch { return; }
     switch (ev.type) {
       case "snapshot":
-        state.statuses = ev.statuses || [];
-        seedSessions();
-        render();
+        liveStatuses(ev.statuses);
         break;
       case "status_changed":
         refreshSoon();
@@ -626,5 +678,6 @@ if (window.visualViewport) {
   vv.addEventListener("scroll", applyInset);
 }
 
+loadCachedStatuses();
 refreshStatus();
 connect();

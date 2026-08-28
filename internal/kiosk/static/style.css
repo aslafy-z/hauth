@@ -95,6 +95,14 @@ header {
 .conn.live { background: var(--ok); }
 .conn.lost { background: var(--bad); }
 
+/* Cached statuses are on screen while fresh ones load. */
+.conn.refreshing {
+  background: var(--brass);
+  animation: connpulse 1s ease-in-out infinite;
+}
+
+@keyframes connpulse { 50% { opacity: .35; } }
+
 /* ---------- status list ---------- */
 
 main {
@@ -521,6 +529,32 @@ body.sheet-open .sheet { transform: translateY(0); }
   border: 1px solid var(--line);
   background: #0a0d12;
   padding: 6px;
+}
+
+/* Desktop dock: the terminal takes the main area left of the sheet.
+   Geometry only matters while body.term-docked is set, which the app
+   applies solely on wide viewports. Above the backdrop, below the sheet. */
+.term-panel {
+  position: fixed;
+  z-index: 45;
+  top: 60px;
+  left: 20px;
+  right: 456px;
+  bottom: 16px;
+}
+
+.term-panel[hidden] { display: none; }
+
+.term-panel .term {
+  height: 100%;
+  margin: 0;
+  box-sizing: border-box;
+  display: flex;
+}
+
+.term-panel .term > div {
+  flex: 1;
+  min-width: 0;
 }
 
 .keybar {

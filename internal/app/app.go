@@ -227,10 +227,21 @@ func (a *App) Statuses(ctx context.Context) []kiosk.HarnessView {
 }
 
 // Check implements kiosk.Controller: an explicit, possibly expensive probe.
-func (a *App) Check(ctx context.Context, harness string) (kiosk.HarnessView, error) {
+// A fresh expensive result is served from cache unless force is set, so
+// every page load can safely re-check without burning probes that cost a
+// network or model call.
+func (a *App) Check(ctx context.Context, harness string, force bool) (kiosk.HarnessView, error) {
 	ad, ok := adapter.Get(harness)
 	if !ok {
 		return kiosk.HarnessView{}, fmt.Errorf("unknown harness %q", harness)
+	}
+	if !force {
+		a.mu.Lock()
+		c, ok := a.status[harness]
+		a.mu.Unlock()
+		if ok && c.expensive && time.Since(c.at) < expensiveStatusTTL {
+			return a.view(ctx, ad, c.st), nil
+		}
 	}
 	st := a.probe(ctx, ad, false)
 	return a.view(ctx, ad, st), nil

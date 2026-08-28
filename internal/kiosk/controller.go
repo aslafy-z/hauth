@@ -11,8 +11,9 @@ import (
 type Controller interface {
 	// Statuses returns the cached view of every harness. It must be cheap.
 	Statuses(ctx context.Context) []HarnessView
-	// Check runs an expensive probe for one harness on user demand.
-	Check(ctx context.Context, harness string) (HarnessView, error)
+	// Check runs an expensive probe for one harness on user demand. A
+	// recent result may be served from cache unless force is set.
+	Check(ctx context.Context, harness string, force bool) (HarnessView, error)
 	// StartLogin starts a login session for harness with the given method.
 	// Starting a new session cancels any active one for that harness.
 	StartLogin(ctx context.Context, harness, method string) (sessionID string, err error)

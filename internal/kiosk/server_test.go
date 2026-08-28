@@ -39,7 +39,7 @@ func newStubController() *stubController {
 }
 
 func (c *stubController) Statuses(context.Context) []HarnessView { return c.views }
-func (c *stubController) Check(_ context.Context, name string) (HarnessView, error) {
+func (c *stubController) Check(_ context.Context, name string, _ bool) (HarnessView, error) {
 	for _, v := range c.views {
 		if v.Name == name {
 			return v, nil

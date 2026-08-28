@@ -130,7 +130,7 @@ func (s *Server) routes() http.Handler {
 	})
 
 	mux.HandleFunc("POST /api/harness/{name}/check", func(w http.ResponseWriter, r *http.Request) {
-		view, err := s.ctrl.Check(r.Context(), r.PathValue("name"))
+		view, err := s.ctrl.Check(r.Context(), r.PathValue("name"), r.URL.Query().Get("force") == "1")
 		if err != nil {
 			writeErr(w, http.StatusBadGateway, err)
 			return
