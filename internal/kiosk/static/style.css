@@ -557,6 +557,23 @@ body.sheet-open .sheet { transform: translateY(0); }
   min-width: 0;
 }
 
+/* xterm's viewport is overflow-y: scroll, so the browser always paints a
+   scrollbar gutter; keep it slim and quiet instead of the default track. */
+.term .xterm-viewport {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+
+.term .xterm-viewport::-webkit-scrollbar { width: 6px; }
+.term .xterm-viewport::-webkit-scrollbar-track { background: transparent; }
+
+.term .xterm-viewport::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 3px;
+}
+
+.term .xterm-viewport::-webkit-scrollbar-thumb:hover { background: var(--faint); }
+
 .keybar {
   display: flex;
   gap: 6px;
