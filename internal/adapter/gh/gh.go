@@ -55,6 +55,10 @@ func (g *ghAdapter) Methods() []adapter.Method {
 					// having to open the terminal (the "browser" it then
 					// opens is the session's shim).
 					adapter.Rule{Pattern: regexp.MustCompile(`Press Enter to open .* in your browser`), Kind: adapter.EventPrompt, Once: true, Respond: "\r"},
+					// gh asks whether to configure the git credential
+					// helper before starting the flow; accept the default
+					// Yes, which a workspace wants anyway.
+					adapter.Rule{Pattern: regexp.MustCompile(`Authenticate Git with your GitHub credentials`), Kind: adapter.EventPrompt, Once: true, Respond: "\r"},
 					adapter.Rule{Pattern: regexp.MustCompile(`(?P<url>https://github\.com/login/device[^\s"']*)`), Kind: adapter.EventURL, Once: true},
 					adapter.Rule{Pattern: regexp.MustCompile(`Logged in as \S+`), Kind: adapter.EventSuccess, Once: true},
 					adapter.Rule{Pattern: regexp.MustCompile(`authorization request was denied|Authentication failed`), Kind: adapter.EventFailure, Once: true},

@@ -4,6 +4,7 @@ package opencode
 
 import (
 	"context"
+	"regexp"
 	"time"
 
 	"github.com/aslafy-z/hauth/internal/adapter"
@@ -40,8 +41,16 @@ func (o *opencodeAdapter) Methods() []adapter.Method {
 			ID:    "paste",
 			Title: "Interactive provider login",
 			Argv:  []string{"opencode", "auth", "login"},
-			// The picker UI varies per provider; the generic URL fallback
-			// plus the terminal panel carry the flow.
+			// The picker UI varies per provider; explicit rules cover the
+			// ChatGPT device flow ("Go to: <url>" / "Enter code: <code>"),
+			// and the generic URL fallback plus the terminal panel carry
+			// the rest.
+			Detect: func() adapter.Detector {
+				return adapter.NewLineDetector(
+					adapter.Rule{Pattern: regexp.MustCompile(`(?i)go to[:\s]+(?P<url>https://\S+)`), Kind: adapter.EventURL, Once: true},
+					adapter.Rule{Pattern: regexp.MustCompile(`(?i)enter code[:\s]+(?P<code>[A-Z0-9]{3,10}-[A-Z0-9]{3,10})`), Kind: adapter.EventCode, Once: true},
+				)
+			},
 			Input:   adapter.InputFreeText,
 			Timeout: 10 * time.Minute,
 		},

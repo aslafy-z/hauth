@@ -15,9 +15,9 @@ func TestLoginTranscriptURLFallback(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// The method declares no detector; sessions fall back to the generic
-	// URL detector, mirrored here.
-	evs := common.ReplayTranscript(adapter.NewLineDetector(), raw)
+	// Providers without explicit rules ride the generic URL fallback.
+	a := New(common.Config{Home: t.TempDir(), StateDir: t.TempDir()})
+	evs := common.ReplayTranscript(a.Methods()[0].Detect(), raw)
 	var url bool
 	for _, e := range evs {
 		if e.Kind == adapter.EventURL && e.URL == "https://console.anthropic.com/settings/keys" {
@@ -26,6 +26,29 @@ func TestLoginTranscriptURLFallback(t *testing.T) {
 	}
 	if !url {
 		t.Fatalf("no URL detected, events=%+v", evs)
+	}
+}
+
+// The ChatGPT device flow shows a code the person must type into the
+// provider's page; it has to surface as an EventCode for the kiosk.
+func TestDeviceTranscriptSurfacesCode(t *testing.T) {
+	raw, err := os.ReadFile("../../../testdata/opencode-device.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	a := New(common.Config{Home: t.TempDir(), StateDir: t.TempDir()})
+	evs := common.ReplayTranscript(a.Methods()[0].Detect(), raw)
+	var url, code bool
+	for _, e := range evs {
+		switch e.Kind {
+		case adapter.EventURL:
+			url = e.URL == "https://auth.openai.com/codex/device"
+		case adapter.EventCode:
+			code = e.Code == "HF8T-HPD3H"
+		}
+	}
+	if !url || !code {
+		t.Fatalf("url=%v code=%v events=%+v", url, code, evs)
 	}
 }
 

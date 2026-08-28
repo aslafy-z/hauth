@@ -1,0 +1,13 @@
+┌  Add credential
+│
+◇  Select provider
+│  OpenAI
+│
+◇  Login method
+│  ChatGPT Pro/Plus (headless)
+│
+●  Go to: https://auth.openai.com/codex/device
+│
+●  Enter code: HF8T-HPD3H
+│
+◐  Waiting for authorization...

@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"regexp"
 	"testing"
 
 	"github.com/aslafy-z/hauth/internal/adapter"
@@ -34,7 +35,7 @@ func TestDeviceDetector(t *testing.T) {
 	}
 	a := New(testCfg(t))
 	evs := common.ReplayTranscript(a.Methods()[0].Detect(), raw)
-	var code, url, prompt, success bool
+	var code, url, prompt, gitGate, success bool
 	for _, e := range evs {
 		switch e.Kind {
 		case adapter.EventCode:
@@ -43,12 +44,15 @@ func TestDeviceDetector(t *testing.T) {
 			url = e.URL == "https://github.com/login/device"
 		case adapter.EventPrompt:
 			prompt = true
+			if e.Respond == "\r" && regexp.MustCompile(`Authenticate Git`).MatchString(e.Prompt) {
+				gitGate = true
+			}
 		case adapter.EventSuccess:
 			success = true
 		}
 	}
-	if !code || !url || !prompt || !success {
-		t.Fatalf("code=%v url=%v prompt=%v success=%v events=%+v", code, url, prompt, success, evs)
+	if !code || !url || !prompt || !gitGate || !success {
+		t.Fatalf("code=%v url=%v prompt=%v gitGate=%v success=%v events=%+v", code, url, prompt, gitGate, success, evs)
 	}
 }
 

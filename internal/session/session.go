@@ -66,8 +66,11 @@ type Session struct {
 	detector adapter.Detector
 	lineBuf  []byte
 	osc8Buf  []byte
+	qryBuf   []byte
 
 	mu       sync.Mutex
+	rows     uint16
+	cols     uint16
 	state    State
 	exitCode int
 	ring     []byte
@@ -128,6 +131,8 @@ func Start(ctx context.Context, harness string, m adapter.Method, opts Options) 
 		method:   m,
 		redactor: NewStreamRedactor(),
 		detector: det,
+		rows:     50,
+		cols:     240,
 		state:    StateRunning,
 		exitCode: -1,
 		subs:     map[int]chan []byte{},
@@ -194,6 +199,7 @@ func Start(ctx context.Context, harness string, m adapter.Method, opts Options) 
 		for {
 			n, err := ptmx.Read(buf)
 			if n > 0 {
+				s.answerTermQueries(buf[:n])
 				s.consumeOutput(buf[:n])
 				s.consumeDetect(buf[:n])
 			}
@@ -234,8 +240,11 @@ func (s *Session) SendLine(text string) error {
 	return s.Write(in)
 }
 
-// Resize sets the pty window size.
+// Resize sets the pty window size; cursor-position answers track it.
 func (s *Session) Resize(rows, cols uint16) error {
+	s.mu.Lock()
+	s.rows, s.cols = rows, cols
+	s.mu.Unlock()
 	return pty.Setsize(s.ptmx, &pty.Winsize{Rows: rows, Cols: cols})
 }
 
