@@ -142,7 +142,7 @@ function openSheet(name, focusOrigin) {
 function closeSheet() {
   document.body.classList.remove("sheet-open");
   state.selected = null;
-  teardownTerm();
+  closeTerm();
   if (state.returnFocus) state.returnFocus.focus({ preventScroll: true });
 }
 
@@ -214,7 +214,7 @@ function autoCheck(h) {
 }
 
 function renderDetail(h) {
-  teardownTerm();
+  closeTerm();
   sheetBody.textContent = "";
   autoCheck(h);
 
@@ -399,7 +399,7 @@ function renderFlow(h, s) {
     const done = el("div", "actions");
     done.append(actionBtn("Done", "primary", async () => {
       delete state.sessions[h.name];
-      teardownTerm();
+      closeTerm();
       await refreshStatus();
       renderSheet();
     }));
@@ -509,12 +509,20 @@ function mountTerm(s, host) {
   state.term = { sid: s.id, term, ws, fit, ro, el: holder };
 }
 
+// teardownTerm disposes the xterm instance only; it must not touch
+// state.termOpen. mountTerm tears down a previous instance while the panel
+// stays open, and clearing the flag there made the terminal hide itself on
+// the next render. Callers that mean "the panel is closed" use closeTerm.
 function teardownTerm() {
-  if (!state.term) { state.termOpen = false; return; }
+  if (!state.term) return;
   try { state.term.ws.close(); } catch { /* already closed */ }
   state.term.ro.disconnect();
   state.term.term.dispose();
   state.term = null;
+}
+
+function closeTerm() {
+  teardownTerm();
   state.termOpen = false;
 }
 
