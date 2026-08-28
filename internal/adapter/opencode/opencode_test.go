@@ -2,9 +2,11 @@ package opencode
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/aslafy-z/hauth/internal/adapter"
 	"github.com/aslafy-z/hauth/internal/adapter/common"
@@ -49,6 +51,54 @@ func TestDeviceTranscriptSurfacesCode(t *testing.T) {
 	}
 	if !url || !code {
 		t.Fatalf("url=%v code=%v events=%+v", url, code, evs)
+	}
+}
+
+func writeAuth(t *testing.T, home, content string) {
+	t.Helper()
+	dir := filepath.Join(home, ".local/share/opencode")
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "auth.json"), []byte(content), 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// auth.json holds one entry per provider; the probe surfaces which
+// providers are logged in and, for OAuth, validity from the access expiry.
+func TestProbeReadsProviders(t *testing.T) {
+	future := time.Now().Add(time.Hour).UnixMilli()
+	cfg := common.Config{Home: t.TempDir(), StateDir: t.TempDir()}
+	writeAuth(t, cfg.Home, fmt.Sprintf(
+		`{"openai":{"type":"oauth","refresh":"r","access":"a","expires":%d},"anthropic":{"type":"api","key":"sk-x"}}`, future))
+	st, err := New(cfg).Probe(context.Background(), true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if st.Account != "anthropic, openai" {
+		t.Errorf("account = %q", st.Account)
+	}
+	if st.Valid != adapter.ValidityValid {
+		t.Errorf("valid = %v, want valid (unexpired oauth)", st.Valid)
+	}
+}
+
+func TestProbeExpiredOauthStaysUnknown(t *testing.T) {
+	past := time.Now().Add(-time.Hour).UnixMilli()
+	cfg := common.Config{Home: t.TempDir(), StateDir: t.TempDir()}
+	writeAuth(t, cfg.Home, fmt.Sprintf(`{"openai":{"type":"oauth","refresh":"r","access":"a","expires":%d}}`, past))
+	st, err := New(cfg).Probe(context.Background(), true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// An expired access token still refreshes; never report invalid from
+	// the file alone.
+	if st.Valid != adapter.ValidityUnknown {
+		t.Errorf("valid = %v, want unknown", st.Valid)
+	}
+	if st.Account != "openai" {
+		t.Errorf("account = %q", st.Account)
 	}
 }
 

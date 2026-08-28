@@ -4,7 +4,12 @@ package opencode
 
 import (
 	"context"
+	"encoding/json"
+	"maps"
+	"os"
 	"regexp"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/aslafy-z/hauth/internal/adapter"
@@ -60,7 +65,11 @@ func (o *opencodeAdapter) Methods() []adapter.Method {
 func (o *opencodeAdapter) Probe(ctx context.Context, cheap bool) (adapter.Status, error) {
 	src, detail := source.Resolve(o, o.cfg.Home, o.cfg.StateDir)
 	st := adapter.Status{Source: src, Detail: detail, Valid: adapter.ValidityUnknown, CheckedAt: time.Now()}
-	if src == adapter.SourceNone || cheap {
+	if src == adapter.SourceNone {
+		return st, nil
+	}
+	o.readAuth(&st)
+	if cheap {
 		return st, nil
 	}
 	// auth list only proves the file parses; validity would need a
@@ -70,6 +79,32 @@ func (o *opencodeAdapter) Probe(ctx context.Context, cheap bool) (adapter.Status
 		st.Valid = adapter.ValidityInvalid
 	}
 	return st, nil
+}
+
+// readAuth surfaces the per-provider entries of auth.json: which providers
+// are logged in (as the account) and, for OAuth entries, validity from the
+// access-token expiry (ms epoch). An expired access token still refreshes,
+// and an API key cannot be checked without a billed call, so neither ever
+// downgrades validity below unknown.
+func (o *opencodeAdapter) readAuth(st *adapter.Status) {
+	data, err := os.ReadFile(o.cfg.Abs(authRel))
+	if err != nil {
+		return
+	}
+	var entries map[string]struct {
+		Type    string  `json:"type"`
+		Expires float64 `json:"expires"`
+	}
+	if json.Unmarshal(data, &entries) != nil || len(entries) == 0 {
+		return
+	}
+	st.Account = strings.Join(slices.Sorted(maps.Keys(entries)), ", ")
+	for _, e := range entries {
+		if e.Type == "oauth" && e.Expires > 0 && time.UnixMilli(int64(e.Expires)).After(time.Now()) {
+			st.Valid = adapter.ValidityValid
+			return
+		}
+	}
 }
 
 func (o *opencodeAdapter) Logout(ctx context.Context, src adapter.Source) error {

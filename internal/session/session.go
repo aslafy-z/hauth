@@ -199,9 +199,9 @@ func Start(ctx context.Context, harness string, m adapter.Method, opts Options) 
 		for {
 			n, err := ptmx.Read(buf)
 			if n > 0 {
-				s.answerTermQueries(buf[:n])
-				s.consumeOutput(buf[:n])
-				s.consumeDetect(buf[:n])
+				out := s.interceptTermQueries(buf[:n])
+				s.consumeOutput(out)
+				s.consumeDetect(out)
 			}
 			if err != nil {
 				return
