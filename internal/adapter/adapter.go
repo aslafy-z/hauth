@@ -152,6 +152,10 @@ type Method struct {
 	// Needed for CLIs whose login happens inside a REPL or TUI that never
 	// exits on its own (claude, agy).
 	EndOnSuccess bool
+	// Prepare runs just before the command starts, with the resolved home
+	// and working directory. Adapters use it to pre-seed config that skips
+	// interactive gates (claude's folder-trust dialog).
+	Prepare func(home, cwd string) error
 }
 
 // Adapter is implemented once per harness CLI.

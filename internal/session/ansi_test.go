@@ -10,6 +10,12 @@ func TestStripANSI(t *testing.T) {
 		{"plain", "plain"},
 		{"tab\tkept", "tab\tkept"},
 		{"bell\x07gone", "bellgone"},
+		// Horizontal cursor moves separate words in Ink TUI output; they
+		// must become spaces, not disappear.
+		{"\x1b[4GYes,\x1b[9GI\x1b[11Gtrust\x1b[17Gthis\x1b[22Gfolder", " Yes, I trust this folder"},
+		{"fwd\x1b[3Cback\x1b[2Dcol\x1b[5`done", "fwd back col done"},
+		// Vertical moves and erases still vanish outright.
+		{"\x1b[2Aup\x1b[Kerased", "uperased"},
 	}
 	for _, tc := range cases {
 		if got := StripANSI(tc.in); got != tc.want {

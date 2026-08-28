@@ -33,6 +33,9 @@ const (
 const (
 	ringCap    = 64 << 10
 	maxLineBuf = 16 << 10
+	// respondDelay defers rule auto-responses so the prompt's TUI has
+	// attached its input handler; input written mid-render is discarded.
+	respondDelay = time.Second
 )
 
 // Options configures a session. All fields are optional.
@@ -99,6 +102,18 @@ func Start(ctx context.Context, harness string, m adapter.Method, opts Options) 
 	}
 	if opts.StateDir == "" {
 		opts.StateDir = source.StateDir()
+	}
+
+	if m.Prepare != nil {
+		cwd := m.Cwd
+		if cwd == "" {
+			if wd, err := os.Getwd(); err == nil {
+				cwd = wd
+			}
+		}
+		if err := m.Prepare(opts.Home, cwd); err != nil {
+			return nil, err
+		}
 	}
 
 	var det adapter.Detector
@@ -415,7 +430,13 @@ func (s *Session) handleEvent(ev adapter.Event) {
 	s.mu.Unlock()
 	if ev.Respond != "" {
 		// A rule answered a gate itself (e.g. gh's "Press Enter to open").
-		_ = s.Write(ev.Respond)
+		// The write is delayed: TUIs discard input that arrives while the
+		// prompt is still rendering (Claude Code's trust dialog swallows an
+		// Enter sent the instant its frame streams out but accepts one
+		// 300ms later), and detection fires on the very bytes of that
+		// frame.
+		respond := ev.Respond
+		time.AfterFunc(respondDelay, func() { _ = s.Write(respond) })
 		if ev.Kind == adapter.EventPrompt {
 			return // auto-answered; nothing for the user to do
 		}

@@ -108,12 +108,108 @@ func TestSettingsFilter(t *testing.T) {
 	}
 }
 
+func TestTrustProjectDirSeedsSettings(t *testing.T) {
+	home := t.TempDir()
+	existing := `{"hasCompletedOnboarding":true,"projects":{"/other":{"history":["x"]}}}`
+	if err := os.WriteFile(filepath.Join(home, ".claude.json"), []byte(existing), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := trustProjectDir(home, "/work/dir"); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(filepath.Join(home, ".claude.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got struct {
+		HasCompletedOnboarding bool                      `json:"hasCompletedOnboarding"`
+		Projects               map[string]map[string]any `json:"projects"`
+	}
+	if err := json.Unmarshal(data, &got); err != nil {
+		t.Fatal(err)
+	}
+	if !got.HasCompletedOnboarding {
+		t.Error("existing top-level key lost")
+	}
+	if got.Projects["/other"] == nil {
+		t.Error("existing project entry lost")
+	}
+	if v, _ := got.Projects["/work/dir"]["hasTrustDialogAccepted"].(bool); !v {
+		t.Errorf("cwd not trusted: %v", got.Projects)
+	}
+}
+
+func TestTrustProjectDirCreatesSettings(t *testing.T) {
+	home := t.TempDir()
+	if err := trustProjectDir(home, "/work/dir"); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(filepath.Join(home, ".claude.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !json.Valid(data) {
+		t.Fatalf("invalid json: %s", data)
+	}
+}
+
+func TestTrustProjectDirLeavesCorruptFileAlone(t *testing.T) {
+	home := t.TempDir()
+	if err := os.WriteFile(filepath.Join(home, ".claude.json"), []byte("{oops"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := trustProjectDir(home, "/work/dir"); err != nil {
+		t.Fatal(err)
+	}
+	data, _ := os.ReadFile(filepath.Join(home, ".claude.json"))
+	if string(data) != "{oops" {
+		t.Fatalf("corrupt file rewritten: %s", data)
+	}
+}
+
 func TestFilterPassesCredentialsThrough(t *testing.T) {
 	a := New(testCfg(t)).(adapter.FileFilter)
 	in := []byte(`{"claudeAiOauth":{}}`)
 	out, ok := a.FilterFile(".claude/.credentials.json", in)
 	if !ok || string(out) != string(in) {
 		t.Fatal("credentials file must pass through unchanged")
+	}
+}
+
+// The claude-trust.txt fixture is a real recording (claude 2.1.250): the
+// TUI lays words out with cursor-column moves instead of spaces, so this
+// exercises ANSI stripping as much as the rules. The recorded dialog
+// preselects "No, exit", so the expected answer is down-then-Enter in one
+// write, and never a plain Enter (which would confirm "No, exit").
+func TestTrustGateAutoAnsweredOnRealTranscript(t *testing.T) {
+	raw, err := os.ReadFile("../../../testdata/claude-trust.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var down, enter bool
+	for _, e := range common.ReplayTranscript(pasteDetector(), raw) {
+		switch e.Respond {
+		case "\x1b[B\r":
+			down = true
+		case "\r":
+			enter = true
+		}
+	}
+	if !down || enter {
+		t.Fatalf("down+enter=%v plain enter=%v", down, enter)
+	}
+}
+
+// The kiosk-deployed variant renders numbered options with Yes preselected;
+// it must be confirmed directly, never moved off with a down-arrow.
+func TestTrustGateNumberedVariant(t *testing.T) {
+	d := pasteDetector()
+	evs := d.Feed("› 1. Yes, I trust this folder")
+	if len(evs) != 1 || evs[0].Respond != "\r" {
+		t.Fatalf("numbered Yes not confirmed: %+v", evs)
+	}
+	if evs := d.Feed("2. No, exit"); len(evs) != 0 {
+		t.Fatalf("unselected No answered: %+v", evs)
 	}
 }
 

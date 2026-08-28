@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"regexp"
 	"time"
 
@@ -59,7 +60,10 @@ func (c *claudeAdapter) Refresh() adapter.RefreshPolicy { return adapter.Refresh
 func pasteDetector() adapter.Detector {
 	return adapter.NewLineDetector(
 		adapter.Rule{Pattern: regexp.MustCompile(`(?i)paste code`), Kind: adapter.EventPrompt, Once: true},
-		adapter.Rule{Pattern: regexp.MustCompile(`(?i)login successful|logged in`), Kind: adapter.EventSuccess, Once: true},
+		// "logged in" alone would also match the REPL status bar's "Not
+		// logged in · Run /login"; the bundle's success strings are "Login
+		// successful" and "Logged in as".
+		adapter.Rule{Pattern: regexp.MustCompile(`(?i)login successful|logged in as`), Kind: adapter.EventSuccess, Once: true},
 		adapter.Rule{Pattern: regexp.MustCompile(`(?i)invalid code|login failed|unable to log ?in`), Kind: adapter.EventFailure, Once: true},
 		// First-run onboarding gates, each accepted with its default so
 		// nobody has to navigate the TUI by hand: theme picker, login
@@ -68,8 +72,55 @@ func pasteDetector() adapter.Detector {
 		adapter.Rule{Pattern: regexp.MustCompile(`(?i)choose (your|the) (color scheme|text style)`), Kind: adapter.EventPrompt, Once: true, Respond: "\r"},
 		adapter.Rule{Pattern: regexp.MustCompile(`(?i)select login method`), Kind: adapter.EventPrompt, Once: true, Respond: "\r"},
 		adapter.Rule{Pattern: regexp.MustCompile(`(?i)press enter to continue`), Kind: adapter.EventPrompt, Once: true, Respond: "\r"},
-		adapter.Rule{Pattern: regexp.MustCompile(`(?i)do you trust|trust this folder`), Kind: adapter.EventPrompt, Once: true, Respond: "\r"},
+		adapter.Rule{Pattern: regexp.MustCompile(`(?i)do you trust the files`), Kind: adapter.EventPrompt, Once: true, Respond: "\r"},
+		// Fallback for the 2.x folder-trust dialog when trustProjectDir
+		// could not pre-seed it away. It preselects "No, exit" for folders
+		// it finds suspicious, so a blind Enter can kill the login. Answer
+		// by pointer position: confirm when the pointer sits on Yes; send
+		// down-then-Enter in one write when it sits on No (the post-move
+		// redraw only repaints the pointer cell, never the option text, so
+		// a second rule would never see the pointer land on Yes).
+		adapter.Rule{Pattern: regexp.MustCompile(`(?i)[❯›>]\s*(?:1\.\s*)?yes, i trust`), Kind: adapter.EventPrompt, Once: true, Respond: "\r"},
+		adapter.Rule{Pattern: regexp.MustCompile(`(?i)[❯›>]\s*(?:\d\.\s*)?no, exit`), Kind: adapter.EventPrompt, Once: true, Respond: "\x1b[B\r"},
 	)
+}
+
+// trustProjectDir marks cwd as trusted in ~/.claude.json so the
+// folder-trust dialog never gates the login TUI (the same pre-seeding the
+// IDE integrations use). Best-effort: an unreadable or corrupt settings
+// file is left alone and the detector's dialog fallback takes over. The
+// projects key stays local; FilterFile excludes it from the synced copy.
+func trustProjectDir(home, cwd string) error {
+	if cwd == "" {
+		return nil
+	}
+	path := filepath.Join(home, settingsRel)
+	m := map[string]json.RawMessage{}
+	if data, err := os.ReadFile(path); err == nil {
+		if json.Unmarshal(data, &m) != nil {
+			return nil
+		}
+	}
+	projects := map[string]map[string]any{}
+	if raw, ok := m["projects"]; ok {
+		if json.Unmarshal(raw, &projects) != nil {
+			return nil
+		}
+	}
+	if projects[cwd] == nil {
+		projects[cwd] = map[string]any{}
+	}
+	projects[cwd]["hasTrustDialogAccepted"] = true
+	raw, err := json.Marshal(projects)
+	if err != nil {
+		return err
+	}
+	m["projects"] = raw
+	data, err := json.MarshalIndent(m, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, append(data, '\n'), 0o600)
 }
 
 func (c *claudeAdapter) Methods() []adapter.Method {
@@ -82,6 +133,7 @@ func (c *claudeAdapter) Methods() []adapter.Method {
 			Input:        adapter.InputCode,
 			Timeout:      15 * time.Minute,
 			EndOnSuccess: true, // /login returns to the REPL, which never exits
+			Prepare:      trustProjectDir,
 		},
 		{
 			// setup-token runs the same paste-code dance and then prints a
@@ -92,6 +144,7 @@ func (c *claudeAdapter) Methods() []adapter.Method {
 			Detect:  pasteDetector,
 			Input:   adapter.InputCode,
 			Timeout: 15 * time.Minute,
+			Prepare: trustProjectDir,
 		},
 	}
 }
