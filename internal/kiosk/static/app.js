@@ -75,16 +75,13 @@ function liveStatuses(list) {
   try { localStorage.setItem(STATUS_CACHE_KEY, JSON.stringify(state.statuses)); } catch { /* full or blocked */ }
   seedSessions();
   render();
-  checkAllOnLoad();
+  checkStale();
 }
 
-// One fan-out per page load: bring every expensive-to-check harness's
-// validity up to date instead of waiting for its sheet to be opened. The
-// server serves recent results from cache, so reloads stay cheap.
-let checkedOnLoad = false;
-function checkAllOnLoad() {
-  if (checkedOnLoad) return;
-  checkedOnLoad = true;
+// Bring every expensive-to-check harness's validity up to date instead of
+// waiting for its sheet to be opened. Runs on every refresh: the per-
+// harness backoff and the server-side result cache keep repeats cheap.
+function checkStale() {
   for (const h of state.statuses) autoCheck(h);
 }
 
@@ -299,6 +296,7 @@ function renderDetail(h) {
     actions.append(actionBtn("Adopt into store", "", async () => {
       if (!confirm(`Push ${h.name}'s existing credential files to the store? hauth did not create them.`)) return;
       await api(`/api/harness/${h.name}/adopt`);
+      delete autoChecked[h.name];
       await refreshStatus();
     }));
   }
@@ -624,6 +622,9 @@ function connect() {
         const s = session(ev.harness);
         s.id = ev.session_id;
         s.state = ev.state;
+        // Fresh credentials outdate any earlier probe: let the next
+        // refresh re-verify validity instead of sitting on the backoff.
+        if (ev.state === "succeeded") delete autoChecked[ev.harness];
         render();
         break;
       }
@@ -651,7 +652,10 @@ function seedSessions() {
       s.url ||= h.session_url;
       s.code ||= h.session_code;
       s.prompt ||= h.session_prompt;
-      if (s.state === "running" && h.session_state) s.state = h.session_state;
+      if (s.state === "running" && h.session_state) {
+        s.state = h.session_state;
+        if (s.state === "succeeded") delete autoChecked[h.name];
+      }
     }
   }
 }
