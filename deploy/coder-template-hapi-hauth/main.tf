@@ -173,6 +173,11 @@ data "coder_parameter" "agent_harness" {
   }
 
   option {
+    name  = "Copilot"
+    value = "copilot"
+  }
+
+  option {
     name  = "OpenCode"
     value = "opencode"
   }

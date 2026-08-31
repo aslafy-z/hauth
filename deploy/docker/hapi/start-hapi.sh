@@ -67,11 +67,14 @@ selected_harnesses() {
     codex)
       echo "gh codex"
       ;;
+    copilot)
+      echo "gh copilot"
+      ;;
     opencode)
       echo "gh opencode"
       ;;
     all)
-      echo "gh claude agy codex opencode"
+      echo "gh claude agy codex copilot opencode"
       ;;
     *)
       echo "Unsupported AGENT_HARNESS: ${AGENT_HARNESS}" >&2
@@ -103,7 +106,7 @@ verify_binary() {
   echo "Found ${bin}: $(command -v "${bin}")"
 
   case "${bin}" in
-    hapi | claude | agy | codex | opencode)
+    hapi | claude | agy | codex | copilot | opencode)
       "${bin}" --version || true
       ;;
   esac
@@ -125,6 +128,9 @@ verify_selected_binaries() {
     codex)
       verify_binary codex
       ;;
+    copilot)
+      verify_binary copilot
+      ;;
     opencode)
       verify_binary opencode
       ;;
@@ -132,6 +138,7 @@ verify_selected_binaries() {
       verify_binary claude
       verify_binary agy
       verify_binary codex
+      verify_binary copilot
       verify_binary opencode
       ;;
     *)
@@ -236,15 +243,33 @@ start_hapi_hub() {
   return 1
 }
 
+runner_supervisor_running() {
+  pgrep -u "$(id -u)" -f "hapi-runner-supervisor ${PROJECT_DIR}" >/dev/null 2>&1
+}
+
 start_hapi_runner() {
+  if runner_supervisor_running; then
+    echo "HAPI runner supervisor already running for ${PROJECT_DIR}"
+    return 0
+  fi
+
   if hapi_process_running "hapi runner start.*--workspace-root ${PROJECT_DIR}([[:space:]]|$)"; then
-    echo "HAPI runner already running for ${PROJECT_DIR}"
+    echo "HAPI runner already running unsupervised for ${PROJECT_DIR}; leaving it"
     return 0
   fi
 
   echo "Starting HAPI runner for workspace root ${PROJECT_DIR}"
 
-  nohup hapi runner start --workspace-root "${PROJECT_DIR}" \
+  # A crashed runner deregisters the machine from the hub and every
+  # per-machine RPC fails until someone restarts it, so keep it under a
+  # restart loop instead of a one-shot spawn.
+  nohup bash -c '
+    while true; do
+      hapi runner start --workspace-root "$1"
+      echo "hapi runner exited with status $?; restarting in 5s"
+      sleep 5
+    done
+  ' hapi-runner-supervisor "${PROJECT_DIR}" \
     >"${HAPI_HOME}/runner.log" \
     2>&1 &
 }
@@ -254,7 +279,7 @@ case "${AGENT_HARNESS}" in
     echo "AGENT_HARNESS=none; skipping HAPI and harness installation"
     exit 0
     ;;
-  hapi-only | code | agy | codex | opencode | all)
+  hapi-only | code | agy | codex | copilot | opencode | all)
     install_hapi_and_selected_harnesses
     start_hauth_agent
     start_hapi_hub
