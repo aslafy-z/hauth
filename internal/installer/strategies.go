@@ -347,7 +347,9 @@ func (s *scriptInstall) run(ctx context.Context, logf func(string, ...any)) erro
 }
 
 // npmInstall is a last resort for harnesses whose only alternative channel
-// is npm.
+// is npm. It installs into the ~/.local prefix so the binary lands in
+// ~/.local/bin like every other strategy and no root-owned global prefix is
+// needed.
 type npmInstall struct {
 	Package string
 }
@@ -362,7 +364,11 @@ func (n *npmInstall) ready() bool {
 }
 
 func (n *npmInstall) run(ctx context.Context, logf func(string, ...any)) error {
-	return runStreaming(ctx, logf, "npm", "install", "-g", n.Package)
+	dir, err := binDir()
+	if err != nil {
+		return err
+	}
+	return runStreaming(ctx, logf, "npm", "install", "-g", "--prefix", filepath.Dir(dir), n.Package)
 }
 
 func runStreaming(ctx context.Context, logf func(string, ...any), name string, args ...string) error {

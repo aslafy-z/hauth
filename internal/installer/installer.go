@@ -102,6 +102,15 @@ var specs = map[string]spec{
 			&scriptInstall{URL: "https://antigravity.google/cli/install.sh"},
 		},
 	},
+	// copilot has no adapter (hauth does not broker its auth); the installer
+	// mapping exists so workspaces can provision the CLI for HAPI's Copilot
+	// agent. npm is its only documented install channel.
+	"copilot": {
+		Binary: "copilot",
+		Strategies: []strategy{
+			&npmInstall{Package: "@github/copilot"},
+		},
+	},
 }
 
 // Known reports whether the harness has an installer mapping.

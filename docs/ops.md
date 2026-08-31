@@ -27,6 +27,7 @@ Release binaries land in `~/.local/bin` (add it to PATH); official install scrip
 | codex | latest GitHub release binary | `github.com/openai/codex` (`codex-<triple>.tar.gz`, musl builds on Linux) |
 | opencode | latest GitHub release binary | `github.com/anomalyco/opencode` (`opencode-<os>-<arch>.tar.gz`/`.zip`); official script `https://opencode.ai/install` as fallback (installs to `~/.opencode/bin`) |
 | agy | official install script | `https://antigravity.google/cli/install.sh` (installs to `~/.local/bin/agy`) |
+| copilot | npm package | `@github/copilot` (npm is the only documented install channel); install-only, hauth does not manage its credentials |
 
 Install scripts are fetched by hauth itself and run with `bash`; `curl` is not required. `GITHUB_TOKEN`, when set, is used for GitHub API rate limits.
 

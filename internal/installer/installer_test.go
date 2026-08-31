@@ -18,7 +18,7 @@ import (
 
 func TestKnownAndBinaryFor(t *testing.T) {
 	for harness, binary := range map[string]string{
-		"gh": "gh", "claude": "claude", "codex": "codex", "opencode": "opencode", "agy": "agy",
+		"gh": "gh", "claude": "claude", "codex": "codex", "opencode": "opencode", "agy": "agy", "copilot": "copilot",
 	} {
 		if !Known(harness) {
 			t.Errorf("Known(%q) = false", harness)
